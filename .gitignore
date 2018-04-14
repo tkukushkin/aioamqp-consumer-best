@@ -1,0 +1,7 @@
+*.pyc
+*.egg-info/
+.cache/
+.mypy_cache/
+.pytest_cache/
+.tox/
+dmypy.*

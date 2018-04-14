@@ -1,0 +1,23 @@
+[MESSAGES CONTROL]
+disable=
+  abstract-method,
+  invalid-name,
+  locally-disabled,
+  missing-docstring,
+  no-self-use,
+  protected-access,
+  redefined-builtin,
+  too-few-public-methods,
+  too-many-arguments,
+  too-many-instance-attributes,
+
+[REPORTS]
+output-format=text
+reports=no
+
+[BASIC]
+max-line-length=120
+single-line-if-stmt=no
+
+[MISCELLANEOUS]
+notes=FIXME,XXX,TODO
