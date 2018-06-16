@@ -4,7 +4,7 @@ import pytest
 
 from aioamqp_consumer.base_middlewares import Eoq
 from aioamqp_consumer.message import Message, MessageAlreadyResolved
-from aioamqp_consumer.middlewares import to_json, ProcessBulk
+from aioamqp_consumer.middlewares import Process, ProcessBulk, to_json
 from tests.utils import Arg, collect_queue, future, make_queue
 
 
@@ -100,3 +100,56 @@ class TestProcessBulk:
 
         message1.reject.assert_called_once_with()
         message2.reject.assert_called_once_with()
+
+
+class TestProcess:
+
+    @pytest.mark.parametrize('ack_result', [
+        future(None),
+        future(exception=MessageAlreadyResolved()),
+    ])
+    async def test_run__success__ack_message(self, mocker, ack_result):
+        # arrange
+        message = Message(
+            body='message',
+            channel=mocker.sentinel.channel,
+            envelope=mocker.sentinel.envelope,
+            properties=mocker.sentinel.properties,
+        )
+        mocker.patch.object(message, 'ack', return_value=ack_result)
+
+        input_queue = make_queue([message, Eoq()])
+        output_queue = asyncio.Queue()
+
+        # act
+        await Process(lambda _: future(None)).run(input_queue, output_queue)
+
+        # assert
+        assert collect_queue(output_queue) == [None, Eoq()]
+
+        message.ack.assert_called_once_with()
+
+    @pytest.mark.parametrize('reject_result', [
+        future(None),
+        future(exception=MessageAlreadyResolved()),
+    ])
+    async def test_run__callback_raised_exception__reject_message(self, mocker, reject_result):
+        # arrange
+        message = Message(
+            body='message',
+            channel=mocker.sentinel.channel,
+            envelope=mocker.sentinel.envelope,
+            properties=mocker.sentinel.properties,
+        )
+        mocker.patch.object(message, 'reject', return_value=reject_result)
+
+        input_queue = make_queue([message, Eoq()])
+        output_queue = asyncio.Queue()
+
+        # act
+        await Process(lambda _: future(exception=Exception)).run(input_queue, output_queue)
+
+        # assert
+        assert collect_queue(output_queue) == [None, Eoq()]
+
+        message.reject.assert_called_once_with()

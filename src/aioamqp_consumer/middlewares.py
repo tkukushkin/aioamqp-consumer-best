@@ -53,3 +53,31 @@ class ProcessBulk(Map[List[Message[T]], None]):
                         pass
 
         return wrapper
+
+
+class Process(Map[Message[T], None]):
+
+    def __init__(self, func: Callable[[Message[T]], Awaitable[None]]) -> None:
+        super().__init__(self._ack_if_success(func))
+
+    @staticmethod
+    def _ack_if_success(
+            callback: Callable[[Message[T]], Awaitable[None]],
+    ) -> Callable[[Message[T]], Awaitable[None]]:
+        @wraps(callback)
+        async def wrapper(message: Message[T]) -> None:
+            try:
+                await callback(message)
+            except Exception as e:  # pylint: disable=broad-except
+                logger.exception(str(e))
+                try:
+                    await message.reject()
+                except MessageAlreadyResolved:
+                    pass
+            else:
+                try:
+                    await message.ack()
+                except MessageAlreadyResolved:
+                    pass
+
+        return wrapper
