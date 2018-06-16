@@ -5,7 +5,7 @@ from typing import List, TypeVar
 T = TypeVar('T')
 
 
-def future(value: T = None, exception: Exception = None) -> 'asyncio.Future[T]':
+def future(value: T = None, *, exception: Exception = None) -> 'asyncio.Future[T]':
     f: asyncio.Future[T] = asyncio.Future()
     if exception:
         f.set_exception(exception)

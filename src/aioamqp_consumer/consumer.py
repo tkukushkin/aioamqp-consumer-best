@@ -32,11 +32,10 @@ class Consumer:
 
     _middleware: Middleware[Message[bytes], None]
     _connection_params_iterator: Iterator[ConnectionParams]
-    _transport: asyncio.Transport
+    _transport: Optional[asyncio.Transport] = None
     _protocol: Optional[aioamqp.AmqpProtocol] = None
     _channel: Optional[Channel] = None
-    _connection_closed: 'asyncio.Future[None]'
-    _closed: 'Optional[asyncio.Future[None]]' = None
+    _closed_future: 'Optional[asyncio.Future[None]]' = None
     _closed_ok: asyncio.Event
 
     def __init__(
@@ -60,60 +59,63 @@ class Consumer:
         self._connection_params_iterator = cycle(self.connection_params)
 
     async def start(self, loop: asyncio.AbstractEventLoop = None) -> None:
-        assert not self._closed, 'Consumer already started.'
+        assert not self._closed_future, 'Consumer already started.'
 
         loop = loop or asyncio.get_event_loop()
 
-        self._closed = asyncio.Future(loop=loop)
-        # Event after close
+        self._closed_future = asyncio.Future(loop=loop)
         self._closed_ok = asyncio.Event(loop=loop)
 
+        connection_closed_future: asyncio.Future[None] = asyncio.Future(loop=loop)
         reconnect_attempts = 0
 
-        while not self._closed.done():
+        while True:
             try:
-                await self._connect(loop=loop)
+                await self._connect(
+                    connection_closed_future=connection_closed_future,
+                    loop=loop,
+                )
 
                 reconnect_attempts = 0
 
                 await gather(
-                    self._closed,
-                    self._connection_closed,
+                    connection_closed_future,
+                    self._closed_future,
                     self._process_queue(loop=loop),
                     loop=loop,
                 )
-            except (aioamqp.AioamqpException, OSError) as e:
-                logger.exception(str(e))
-
+            except (aioamqp.AioamqpException, OSError) as exc:
+                logger.exception(str(exc))
                 reconnect_attempts += 1
                 timeout = min(self.default_reconnect_timeout * reconnect_attempts, self.max_reconnect_timeout)
                 logger.info('Trying to reconnect in %d seconds.', timeout)
                 await asyncio.sleep(timeout, loop=loop)
-
             except _ConsumerCloseException:
-                pass
+                break
 
         await self._disconnect()
-        self._closed = None
+        self._closed_future = None
         self._closed_ok.set()
 
     async def close(self) -> None:
-        closed = cast('asyncio.Future[None]', self._closed)
-        closed.set_exception(_ConsumerCloseException)
+        assert self._closed_future, 'Consumer not started.'
+        self._closed_future.set_exception(_ConsumerCloseException())
         await self._closed_ok.wait()
 
-    async def _connect(self, loop):
+    async def _connect(
+            self,
+            connection_closed_future: 'asyncio.Future[None]',
+            loop: asyncio.AbstractEventLoop,
+    ) -> None:
         await self._disconnect()
 
         connection_params = next(self._connection_params_iterator)
 
         logger.info('Connection params: %s', connection_params)
 
-        self._connection_closed = asyncio.Future(loop=loop)
-
         async def on_error(exception):
-            if not self._connection_closed.done():
-                self._connection_closed.set_exception(exception)
+            if not connection_closed_future.done():
+                connection_closed_future.set_exception(exception)
 
         self._transport, self._protocol, self._channel = await connect_and_open_channel(
             connection_params=connection_params,
@@ -125,11 +127,11 @@ class Consumer:
 
         await self._channel.basic_qos(prefetch_count=self.prefetch_count)
 
-        await declare_queue(self._channel, self.queue)
+        await declare_queue(channel=self._channel, queue=self.queue)
 
-        logger.info('AsyncQueue is ready.')
+        logger.info('Queue is ready.')
 
-    async def _disconnect(self):
+    async def _disconnect(self) -> None:
         if self._channel:
             if self._channel.is_open:
                 await self._channel.close()
@@ -140,6 +142,7 @@ class Consumer:
                 await self._protocol.close()
             self._protocol = None
 
+        if self._transport:
             self._transport.close()
             self._transport = None
 
