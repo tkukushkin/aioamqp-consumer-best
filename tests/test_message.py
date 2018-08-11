@@ -2,8 +2,8 @@ import pytest
 from aioamqp.channel import Channel
 from aioamqp.envelope import Envelope
 
-from aioamqp_consumer import Message
-from aioamqp_consumer.message import MessageAlreadyResolved
+from aioamqp_consumer_best import Message
+from aioamqp_consumer_best.message import MessageAlreadyResolved
 from tests.utils import future
 
 

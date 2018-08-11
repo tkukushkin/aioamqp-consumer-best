@@ -4,9 +4,9 @@ import aioamqp
 import pytest
 from aioamqp.channel import Channel
 
-from aioamqp_consumer import Consumer, Process, Queue
-from aioamqp_consumer.base_middlewares import Middleware
-from aioamqp_consumer.consumer import _ConsumerCloseException
+from aioamqp_consumer_best import Consumer, Process, Queue
+from aioamqp_consumer_best.base_middlewares import Middleware
+from aioamqp_consumer_best.consumer import _ConsumerCloseException
 from tests.utils import Arg, future
 
 
@@ -32,7 +32,7 @@ class TestConsumer:
         ])
         mocker.patch.object(consumer, '_disconnect', return_value=future())
         mocker.patch.object(consumer, '_process_queue', return_value=future())
-        gather = mocker.patch('aioamqp_consumer.consumer.gather', side_effect=[
+        gather = mocker.patch('aioamqp_consumer_best.consumer.gather', side_effect=[
             future(exception=aioamqp.AioamqpException()),
             future(exception=_ConsumerCloseException()),
         ])
@@ -107,7 +107,7 @@ class TestConsumer:
         channel.basic_qos.return_value = future()
 
         connect_and_open_channel = mocker.patch(
-            'aioamqp_consumer.consumer.connect_and_open_channel',
+            'aioamqp_consumer_best.consumer.connect_and_open_channel',
             return_value=future((
                 mocker.sentinel.transport,
                 mocker.sentinel.protocol,
@@ -115,7 +115,7 @@ class TestConsumer:
             )),
         )
 
-        declare_queue = mocker.patch('aioamqp_consumer.consumer.declare_queue', return_value=future())
+        declare_queue = mocker.patch('aioamqp_consumer_best.consumer.declare_queue', return_value=future())
 
         connection_closed_future = asyncio.Future()
 
@@ -198,7 +198,7 @@ class TestConsumer:
         consumer._channel = mocker.Mock(spec=Channel)
         consumer._channel.basic_consume.return_value = future()
 
-        Message = mocker.patch('aioamqp_consumer.consumer.Message')
+        Message = mocker.patch('aioamqp_consumer_best.consumer.Message')
 
         # act
         await consumer._process_queue(loop=event_loop)

@@ -1,4 +1,4 @@
-from aioamqp_consumer.records import ConnectionParams
+from aioamqp_consumer_best.records import ConnectionParams
 
 
 class TestConnectionParams:

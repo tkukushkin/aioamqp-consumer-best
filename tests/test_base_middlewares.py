@@ -2,7 +2,7 @@ import asyncio
 
 import pytest
 
-from aioamqp_consumer.base_middlewares import Eoq, Filter, FilterNones, Map, Middleware, SkipAll, ToBulks, _Composition
+from aioamqp_consumer_best.base_middlewares import Eoq, Filter, FilterNones, Map, Middleware, SkipAll, ToBulks, _Composition
 from tests.utils import collect_queue, future, make_queue
 
 
@@ -14,7 +14,7 @@ class TestMiddleware:
     async def test__or__(self, mocker):
         # arrange
         CompositionMock = mocker.patch(
-            'aioamqp_consumer.base_middlewares._Composition',
+            'aioamqp_consumer_best.base_middlewares._Composition',
             autospec=True,
         )
         mid1 = Middleware()

@@ -2,9 +2,9 @@ import asyncio
 
 import pytest
 
-from aioamqp_consumer.base_middlewares import Eoq
-from aioamqp_consumer.message import Message, MessageAlreadyResolved
-from aioamqp_consumer.middlewares import Process, ProcessBulk, to_json
+from aioamqp_consumer_best.base_middlewares import Eoq
+from aioamqp_consumer_best.message import Message, MessageAlreadyResolved
+from aioamqp_consumer_best.middlewares import Process, ProcessBulk, to_json
 from tests.utils import Arg, collect_queue, future, make_queue
 
 

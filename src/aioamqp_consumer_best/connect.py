@@ -4,7 +4,7 @@ from typing import Awaitable, Callable, Tuple
 import aioamqp
 from aioamqp.channel import Channel
 
-from aioamqp_consumer.records import ConnectionParams
+from aioamqp_consumer_best.records import ConnectionParams
 
 
 async def connect_and_open_channel(

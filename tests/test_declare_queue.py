@@ -1,9 +1,9 @@
 import pytest
 from aioamqp.channel import Channel
 
-from aioamqp_consumer import QueueBinding
-from aioamqp_consumer.declare_queue import declare_queue
-from aioamqp_consumer.records import Exchange, Queue
+from aioamqp_consumer_best import QueueBinding
+from aioamqp_consumer_best.declare_queue import declare_queue
+from aioamqp_consumer_best.records import Exchange, Queue
 from tests.utils import future
 
 

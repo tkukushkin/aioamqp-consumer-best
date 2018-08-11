@@ -9,12 +9,12 @@ from aioamqp.channel import Channel
 from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
 
-from aioamqp_consumer._helpers import gather
-from aioamqp_consumer.base_middlewares import Eoq, Middleware, SkipAll
-from aioamqp_consumer.connect import connect_and_open_channel
-from aioamqp_consumer.declare_queue import declare_queue
-from aioamqp_consumer.message import Message
-from aioamqp_consumer.records import ConnectionParams, Queue
+from aioamqp_consumer_best._helpers import gather
+from aioamqp_consumer_best.base_middlewares import Eoq, Middleware, SkipAll
+from aioamqp_consumer_best.connect import connect_and_open_channel
+from aioamqp_consumer_best.declare_queue import declare_queue
+from aioamqp_consumer_best.message import Message
+from aioamqp_consumer_best.records import ConnectionParams, Queue
 
 
 logger = logging.getLogger(__name__)

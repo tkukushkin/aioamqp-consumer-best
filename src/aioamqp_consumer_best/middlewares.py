@@ -3,8 +3,8 @@ import logging
 from functools import wraps
 from typing import Any, Awaitable, Callable, Dict, List, Optional, TypeVar
 
-from aioamqp_consumer.base_middlewares import FilterNones, Map
-from aioamqp_consumer.message import Message, MessageAlreadyResolved
+from aioamqp_consumer_best.base_middlewares import FilterNones, Map
+from aioamqp_consumer_best.message import Message, MessageAlreadyResolved
 
 
 logger = logging.getLogger(__name__)

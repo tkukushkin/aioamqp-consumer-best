@@ -1,6 +1,6 @@
 from aioamqp.channel import Channel
 
-from aioamqp_consumer.records import Queue
+from aioamqp_consumer_best.records import Queue
 
 
 async def declare_queue(channel: Channel, queue: Queue) -> None:

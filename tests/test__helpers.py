@@ -3,7 +3,7 @@ from collections import Coroutine
 
 import pytest
 
-from aioamqp_consumer._helpers import gather
+from aioamqp_consumer_best._helpers import gather
 from tests.utils import future
 
 

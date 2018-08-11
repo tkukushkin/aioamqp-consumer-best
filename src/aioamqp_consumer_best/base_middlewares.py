@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from typing import Awaitable, Callable, Generic, List, Optional, TypeVar, Union, cast
 
-from aioamqp_consumer._helpers import gather
+from aioamqp_consumer_best._helpers import gather
 
 
 logger = logging.getLogger(__name__)

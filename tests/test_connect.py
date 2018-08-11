@@ -4,8 +4,8 @@ import aioamqp
 from aioamqp.channel import Channel
 import pytest
 
-from aioamqp_consumer.connect import connect_and_open_channel
-from aioamqp_consumer.records import ConnectionParams
+from aioamqp_consumer_best.connect import connect_and_open_channel
+from aioamqp_consumer_best.records import ConnectionParams
 from tests.utils import future
 
 
