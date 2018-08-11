@@ -6,7 +6,7 @@ python:
 install:
   - pip install tox codecov
 script:
-  - tox
+  - tox -v
 after_success:
   - codecov
 deploy:
