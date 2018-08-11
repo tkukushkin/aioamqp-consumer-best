@@ -12,7 +12,7 @@ setup(
     ],
     extras_require={
         'test': [
-            'mypy',
+            'mypy==0.600',
             'pycodestyle',
             'pylint',
             'pytest',
