@@ -45,7 +45,7 @@ class Message(Generic[T]):
         )
 
     def __repr__(self) -> str:
-        return f'<Message body={self.body!r}'
+        return f'<Message body={self.body!r}>'
 
 
 class MessageAlreadyResolved(Exception):
