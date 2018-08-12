@@ -20,49 +20,46 @@ class Eoq:
 
 T = TypeVar('T')
 U = TypeVar('U')
-InputT = TypeVar('InputT')
-OutputT = TypeVar('OutputT')
-PipeT = TypeVar('PipeT')
-OtherOutputT = TypeVar('OtherOutputT')
+V = TypeVar('V')
 
 
-class Middleware(Generic[InputT, OutputT]):
+class Middleware(Generic[T, U]):
 
     async def run(
             self,
-            input_queue: 'asyncio.Queue[Union[InputT, Eoq]]',
-            output_queue: 'asyncio.Queue[Union[OutputT, Eoq]]',
+            input_queue: 'asyncio.Queue[Union[T, Eoq]]',
+            output_queue: 'asyncio.Queue[Union[U, Eoq]]',
             loop: asyncio.AbstractEventLoop = None,
     ) -> None:
         raise NotImplementedError
 
     def __or__(
             self,
-            other: 'Middleware[OutputT, OtherOutputT]'
-    ) -> '_Composition[InputT, OutputT, OtherOutputT]':
+            other: 'Middleware[U, V]'
+    ) -> '_Composition[T, U, V]':
         return _Composition(first=self, second=other)
 
 
-class _Composition(Middleware[InputT, OutputT], Generic[InputT, PipeT, OutputT]):
-    first: Middleware[InputT, PipeT]
-    second: Middleware[PipeT, OutputT]
+class _Composition(Middleware[T, V], Generic[T, U, V]):
+    first: Middleware[T, U]
+    second: Middleware[U, V]
 
     def __init__(
             self,
-            first: Middleware[InputT, PipeT],
-            second: Middleware[PipeT, OutputT],
+            first: Middleware[T, U],
+            second: Middleware[U, V],
     ) -> None:
         self.first = first
         self.second = second
 
     async def run(
             self,
-            input_queue: 'asyncio.Queue[Union[InputT, Eoq]]',
-            output_queue: 'asyncio.Queue[Union[OutputT, Eoq]]',
+            input_queue: 'asyncio.Queue[Union[T, Eoq]]',
+            output_queue: 'asyncio.Queue[Union[V, Eoq]]',
             loop: Optional[asyncio.AbstractEventLoop] = None,
     ) -> None:
         loop = loop or asyncio.get_event_loop()
-        pipe: asyncio.Queue[Union[PipeT, Eoq]] = asyncio.Queue(loop=loop)  # pylint: disable=unsubscriptable-object
+        pipe: asyncio.Queue[Union[U, Eoq]] = asyncio.Queue(loop=loop)  # pylint: disable=unsubscriptable-object
         async with Nursery() as nursery:
             nursery.start_soon(self.first.run(input_queue, pipe, loop=loop))
             nursery.start_soon(self.second.run(pipe, output_queue, loop=loop))
