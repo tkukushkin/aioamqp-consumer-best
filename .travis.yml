@@ -8,7 +8,7 @@ install:
 script:
   - tox -v
 after_success:
-  - codecov
+  - codecov --file .tox/3.6/log/coverage.xml
 deploy:
   provider: pypi
   user: TimofeyKukushkin
