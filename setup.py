@@ -3,7 +3,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='aioamqp-consumer-best',
-    version='1.0.1',
+    version='1.0.2',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     install_requires=[
