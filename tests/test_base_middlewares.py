@@ -2,7 +2,16 @@ import asyncio
 
 import pytest
 
-from aioamqp_consumer_best.base_middlewares import Eoq, Filter, FilterNones, Map, Middleware, SkipAll, ToBulks, _Composition
+from aioamqp_consumer_best.base_middlewares import (
+    Eoq,
+    Filter,
+    FilterNones,
+    Map,
+    Middleware,
+    SkipAll,
+    ToBulks,
+    _Composition,
+)
 from tests.utils import collect_queue, future, make_queue
 
 
@@ -30,7 +39,7 @@ class TestMiddleware:
 
 class Test_Composition:
 
-    async def test_run(self, mocker):
+    async def test_run(self, mocker, event_loop):
         # arrange
         mid1 = mocker.Mock(spec=Middleware)
         mid1.run.return_value = future(None)
@@ -47,8 +56,8 @@ class Test_Composition:
         )
 
         # assert
-        mid1.run.assert_called_once_with(mocker.sentinel.input_queue, QueueMock.return_value)
-        mid2.run.assert_called_once_with(QueueMock.return_value, mocker.sentinel.output_queue)
+        mid1.run.assert_called_once_with(mocker.sentinel.input_queue, QueueMock.return_value, loop=event_loop)
+        mid2.run.assert_called_once_with(QueueMock.return_value, mocker.sentinel.output_queue, loop=event_loop)
 
 
 class TestToBulks:

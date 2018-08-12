@@ -3,7 +3,7 @@ import logging
 from datetime import datetime
 from typing import Awaitable, Callable, Generic, List, Optional, TypeVar, Union, cast
 
-from aioamqp_consumer_best._helpers import gather
+from aionursery import Nursery
 
 
 logger = logging.getLogger(__name__)
@@ -63,11 +63,9 @@ class _Composition(Middleware[InputT, OutputT], Generic[InputT, PipeT, OutputT])
     ) -> None:
         loop = loop or asyncio.get_event_loop()
         pipe: asyncio.Queue[Union[PipeT, Eoq]] = asyncio.Queue(loop=loop)  # pylint: disable=unsubscriptable-object
-        await gather(
-            self.first.run(input_queue, pipe),
-            self.second.run(pipe, output_queue),
-            loop=loop,
-        )
+        async with Nursery() as nursery:
+            nursery.start_soon(self.first.run(input_queue, pipe, loop=loop))
+            nursery.start_soon(self.second.run(pipe, output_queue, loop=loop))
 
 
 class ToBulks(Middleware[T, List[T]]):

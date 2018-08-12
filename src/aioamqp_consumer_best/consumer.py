@@ -8,8 +8,8 @@ import aioamqp
 from aioamqp.channel import Channel
 from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
+from aionursery import Nursery
 
-from aioamqp_consumer_best._helpers import gather
 from aioamqp_consumer_best.base_middlewares import Eoq, Middleware, SkipAll
 from aioamqp_consumer_best.connect import connect_and_open_channel
 from aioamqp_consumer_best.declare_queue import declare_queue
@@ -66,10 +66,11 @@ class Consumer:
         self._closed_future = asyncio.Future(loop=loop)
         self._closed_ok = asyncio.Event(loop=loop)
 
-        connection_closed_future: asyncio.Future[None] = asyncio.Future(loop=loop)
         reconnect_attempts = 0
 
         while True:
+            connection_closed_future: asyncio.Future[None] = asyncio.Future(loop=loop)
+
             try:
                 await self._connect(
                     connection_closed_future=connection_closed_future,
@@ -78,12 +79,11 @@ class Consumer:
 
                 reconnect_attempts = 0
 
-                await gather(
-                    connection_closed_future,
-                    self._closed_future,
-                    self._process_queue(loop=loop),
-                    loop=loop,
-                )
+                async with Nursery() as nursery:
+                    nursery.start_soon(connection_closed_future)
+                    nursery.start_soon(self._closed_future)
+                    nursery.start_soon(self._process_queue(loop=loop))
+
             except (aioamqp.AioamqpException, OSError) as exc:
                 logger.exception(str(exc))
                 reconnect_attempts += 1
@@ -117,17 +117,18 @@ class Consumer:
             if not connection_closed_future.done():
                 connection_closed_future.set_exception(exception)
 
-        self._transport, self._protocol, self._channel = await connect_and_open_channel(
+        self._transport, self._protocol, channel = await connect_and_open_channel(
             connection_params=connection_params,
             on_error=on_error,
             loop=loop,
         )
+        self._channel = channel
 
         logger.info('Connection and channel are ready.')
 
-        await self._channel.basic_qos(prefetch_count=self.prefetch_count)
+        await channel.basic_qos(prefetch_count=self.prefetch_count)
 
-        await declare_queue(channel=self._channel, queue=self.queue)
+        await declare_queue(channel=channel, queue=self.queue)
 
         logger.info('Queue is ready.')
 

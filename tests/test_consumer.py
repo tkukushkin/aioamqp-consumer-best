@@ -31,8 +31,7 @@ class TestConsumer:
             future(),
         ])
         mocker.patch.object(consumer, '_disconnect', return_value=future())
-        mocker.patch.object(consumer, '_process_queue', return_value=future())
-        gather = mocker.patch('aioamqp_consumer_best.consumer.gather', side_effect=[
+        mocker.patch.object(consumer, '_process_queue', side_effect=[
             future(exception=aioamqp.AioamqpException()),
             future(exception=_ConsumerCloseException()),
         ])
@@ -55,15 +54,6 @@ class TestConsumer:
         assert consumer._process_queue.call_count == 2
         consumer._process_queue.assert_called_with(loop=event_loop)
 
-        assert gather.call_count == 2
-        closed_future_arg = Arg()
-        gather.assert_called_with(
-            connection_closed_future_arg.value,
-            closed_future_arg,
-            consumer._process_queue.return_value,
-            loop=event_loop,
-        )
-        assert isinstance(closed_future_arg.value, asyncio.Future)
         assert asyncio.sleep.call_args_list == [
             mocker.call(3.0, loop=event_loop),
             mocker.call(5.0, loop=event_loop),

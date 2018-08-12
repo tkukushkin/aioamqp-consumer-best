@@ -3,11 +3,12 @@ from setuptools import find_packages, setup
 
 setup(
     name='aioamqp-consumer-best',
-    version='1.0.0',
+    version='1.0.1',
     packages=find_packages('src'),
     package_dir={'': 'src'},
     install_requires=[
         'aioamqp',
+        'aionursery',
         'dataclasses',
     ],
     extras_require={
