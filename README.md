@@ -17,7 +17,7 @@ from aioamqp_consumer_best import (
     Queue,
     QueueBinding,
     ToBulks,
-    to_json,
+    load_json,
 )
 
 
@@ -27,7 +27,7 @@ async def callback(messages: List[Message]) -> None:
 
 consumer = Consumer(
     middleware=(
-        to_json
+        load_json
         | ToBulks(max_bulk_size=10, bulk_timeout=3.0)
         | ProcessBulk(callback)
     ),
