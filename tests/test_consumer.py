@@ -7,7 +7,7 @@ from aioamqp.channel import Channel
 from aioamqp_consumer_best import Consumer, Process, Queue
 from aioamqp_consumer_best.base_middlewares import Middleware
 from aioamqp_consumer_best.consumer import _ConsumerCloseException
-from tests.utils import Arg, future
+from tests.utils import Arg, future, make_iterator
 
 
 pytestmark = pytest.mark.asyncio
@@ -183,10 +183,16 @@ class TestConsumer:
         )
 
         consumer._middleware = mocker.Mock(spec=Middleware)
-        consumer._middleware.run.return_value = future()
+        consumer._middleware.return_value = make_iterator([])
 
         consumer._channel = mocker.Mock(spec=Channel)
         consumer._channel.basic_consume.return_value = future()
+
+        queue_to_iterator_mock = mocker.patch(
+            'aioamqp_consumer_best.consumer.queue_to_iterator',
+            autospec=True,
+            return_value=mocker.sentinel.inp,
+        )
 
         Message = mocker.patch('aioamqp_consumer_best.consumer.Message')
 
@@ -201,15 +207,15 @@ class TestConsumer:
             consumer_tag='tag',
         )
 
-        input_queue_arg = Arg()
-        output_queue_arg = Arg()
-        consumer._middleware.run.assert_called_once_with(
-            input_queue=input_queue_arg,
-            output_queue=output_queue_arg,
+        arg = Arg()
+        queue_to_iterator_mock.assert_called_once_with(arg)
+        input_queue = arg.value
+        assert isinstance(input_queue, asyncio.Queue)
+
+        consumer._middleware.assert_called_once_with(
+            inp=mocker.sentinel.inp,
             loop=event_loop,
         )
-
-        assert output_queue_arg.value.maxsize == 1
 
         await callback_arg.value(
             channel=mocker.sentinel.channel,
@@ -217,7 +223,7 @@ class TestConsumer:
             envelope=mocker.sentinel.envelope,
             properties=mocker.sentinel.properties,
         )
-        message = input_queue_arg.value.get_nowait()
+        message = input_queue.get_nowait()
         assert message is Message.return_value
         Message.assert_called_once_with(
             channel=mocker.sentinel.channel,

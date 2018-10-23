@@ -9,7 +9,7 @@ T = TypeVar('T')
 U = TypeVar('U')
 
 
-class Message(Generic[T]):
+class Message(Generic[T]):  # pylint: disable=unsubscriptable-object
     body: T
     envelope: Envelope
     properties: Properties

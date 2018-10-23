@@ -2,7 +2,7 @@ import asyncio
 import logging
 import socket
 from itertools import cycle
-from typing import Iterable, Iterator, Optional, TypeVar, Union, cast
+from typing import Iterable, Iterator, Optional, TypeVar, cast
 
 import aioamqp
 from aioamqp.channel import Channel
@@ -10,7 +10,8 @@ from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
 from aionursery import Nursery
 
-from aioamqp_consumer_best.base_middlewares import Eoq, Middleware, SkipAll
+from aioamqp_consumer_best._helpers import queue_to_iterator
+from aioamqp_consumer_best.base_middlewares import Middleware, SkipAll
 from aioamqp_consumer_best.connect import connect_and_open_channel
 from aioamqp_consumer_best.declare_queue import declare_queue
 from aioamqp_consumer_best.message import Message
@@ -148,11 +149,8 @@ class Consumer:
             self._transport = None
 
     async def _process_queue(self, loop: asyncio.AbstractEventLoop) -> None:
-        input_queue: asyncio.Queue[Union[Message[bytes], Eoq]] = (  # pylint: disable=unsubscriptable-object
+        input_queue: asyncio.Queue[Message[bytes]] = (  # pylint: disable=unsubscriptable-object
             asyncio.Queue(loop=loop)
-        )
-        output_queue: asyncio.Queue[Union[None, Eoq]] = (  # pylint: disable=unsubscriptable-object
-            asyncio.Queue(loop=loop, maxsize=1)
         )
 
         async def callback(channel: Channel, body: bytes, envelope: Envelope, properties: Properties) -> None:
@@ -170,11 +168,8 @@ class Consumer:
             consumer_tag=self.tag,
         )
 
-        await self._middleware.run(
-            input_queue=input_queue,
-            output_queue=output_queue,
-            loop=loop,
-        )
+        async for _ in self._middleware(inp=queue_to_iterator(input_queue), loop=loop):
+            pass
 
 
 class _ConsumerCloseException(Exception):

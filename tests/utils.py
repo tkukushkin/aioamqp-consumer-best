@@ -1,11 +1,11 @@
 import asyncio
-from typing import List, TypeVar
+from typing import AsyncIterator, List, TypeVar
 
 
 T = TypeVar('T')
 
 
-def future(value: T = None, *, exception: Exception = None) -> 'asyncio.Future[T]':
+def future(value: T = None, *, exception: BaseException = None) -> 'asyncio.Future[T]':
     f: asyncio.Future[T] = asyncio.Future()
     if exception:
         f.set_exception(exception)
@@ -21,19 +21,13 @@ class Arg(object):
         return True
 
 
-def collect_queue(queue: 'asyncio.Queue[T]') -> List[T]:
+async def make_iterator(items: List[T]) -> AsyncIterator[T]:
+    for item in items:
+        yield item
+
+
+async def collect_iterator(it: AsyncIterator[T]) -> List[T]:
     result: List[T] = []
-    while True:
-        try:
-            item = queue.get_nowait()
-        except asyncio.QueueEmpty:
-            break
+    async for item in it:
         result.append(item)
     return result
-
-
-def make_queue(items: List[T]) -> 'asyncio.Queue[T]':
-    queue: asyncio.Queue[T] = asyncio.Queue()
-    for item in items:
-        queue.put_nowait(item)
-    return queue

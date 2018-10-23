@@ -1,17 +1,14 @@
-import asyncio
-
 import pytest
 
-from aioamqp_consumer_best.base_middlewares import Eoq
 from aioamqp_consumer_best.message import Message, MessageAlreadyResolved
-from aioamqp_consumer_best.middlewares import Process, ProcessBulk, to_json
-from tests.utils import Arg, collect_queue, future, make_queue
+from aioamqp_consumer_best.middlewares import Process, ProcessBulk, load_json
+from tests.utils import Arg, collect_iterator, future, make_iterator
 
 
 pytestmark = pytest.mark.asyncio
 
 
-async def test_to_json(mocker):
+async def test_load_json(mocker, event_loop):
     # arrange
     message1 = Message(
         body='{"hello": "world"}',
@@ -26,16 +23,15 @@ async def test_to_json(mocker):
         properties=mocker.sentinel.properties,
     )
     mocker.patch.object(message2, 'reject', return_value=future())
-
-    input_queue = make_queue([message1, message2, Eoq()])
-    output_queue = asyncio.Queue()
+    inp = make_iterator([message1, message2])
 
     # act
-    await to_json.run(input_queue, output_queue)
+    out = load_json.func(inp, event_loop)
 
     # assert
+    result = await collect_iterator(out)
     message_arg = Arg()
-    assert collect_queue(output_queue) == [message_arg, Eoq()]
+    assert result == [message_arg]
     assert message_arg.value.body == {'hello': 'world'}
 
     message2.reject.assert_called_once_with(requeue=False)
@@ -59,16 +55,14 @@ class TestProcessBulk:
             properties=mocker.sentinel.properties,
         )
         mocker.patch.object(message2, 'ack', return_value=future(exception=MessageAlreadyResolved()))
-
-        input_queue = make_queue([[message1, message2], Eoq()])
-        output_queue = asyncio.Queue()
+        middleware = ProcessBulk(lambda messages: future(None))
+        inp = make_iterator([[message1, message2]])
 
         # act
-        await ProcessBulk(lambda messages: future(None)).run(input_queue, output_queue)
+        out = middleware(inp)
 
         # assert
-        assert collect_queue(output_queue) == [None, Eoq()]
-
+        assert await collect_iterator(out) == [None]
         message1.ack.assert_called_once_with()
         message2.ack.assert_called_once_with()
 
@@ -89,15 +83,14 @@ class TestProcessBulk:
         )
         mocker.patch.object(message2, 'reject', return_value=future(exception=MessageAlreadyResolved()))
 
-        input_queue = make_queue([[message1, message2], Eoq()])
-        output_queue = asyncio.Queue()
+        middleware = ProcessBulk(lambda messages: future(exception=Exception()))
+        inp = make_iterator([[message1, message2]])
 
         # act
-        await ProcessBulk(lambda messages: future(exception=Exception())).run(input_queue, output_queue)
+        out = middleware(inp)
 
         # assert
-        assert collect_queue(output_queue) == [None, Eoq()]
-
+        assert await collect_iterator(out) == [None]
         message1.reject.assert_called_once_with()
         message2.reject.assert_called_once_with()
 
@@ -117,16 +110,14 @@ class TestProcess:
             properties=mocker.sentinel.properties,
         )
         mocker.patch.object(message, 'ack', return_value=ack_result)
-
-        input_queue = make_queue([message, Eoq()])
-        output_queue = asyncio.Queue()
+        inp = make_iterator([message])
+        middleware = Process(lambda _: future(None))
 
         # act
-        await Process(lambda _: future(None)).run(input_queue, output_queue)
+        out = middleware(inp)
 
         # assert
-        assert collect_queue(output_queue) == [None, Eoq()]
-
+        assert await collect_iterator(out) == [None]
         message.ack.assert_called_once_with()
 
     @pytest.mark.parametrize('reject_result', [
@@ -142,14 +133,12 @@ class TestProcess:
             properties=mocker.sentinel.properties,
         )
         mocker.patch.object(message, 'reject', return_value=reject_result)
-
-        input_queue = make_queue([message, Eoq()])
-        output_queue = asyncio.Queue()
+        inp = make_iterator([message])
+        middleware = Process(lambda _: future(exception=Exception()))
 
         # act
-        await Process(lambda _: future(exception=Exception)).run(input_queue, output_queue)
+        out = middleware(inp)
 
         # assert
-        assert collect_queue(output_queue) == [None, Eoq()]
-
+        assert await collect_iterator(out) == [None]
         message.reject.assert_called_once_with()

@@ -1,9 +1,10 @@
+import asyncio
 import json
 import logging
 from functools import wraps
-from typing import Any, Awaitable, Callable, Dict, List, Optional, TypeVar
+from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, TypeVar
 
-from aioamqp_consumer_best.base_middlewares import FilterNones, Map
+from aioamqp_consumer_best.base_middlewares import Map, Middleware
 from aioamqp_consumer_best.message import Message, MessageAlreadyResolved
 
 
@@ -12,17 +13,19 @@ logger = logging.getLogger(__name__)
 T = TypeVar('T')
 
 
-async def _convert_body_to_json(message: Message[bytes]) -> Optional[Message[Dict[str, Any]]]:
-    try:
-        new_body = json.loads(message.body)
-    except json.JSONDecodeError:
-        logger.exception('Failed to decode message body')
-        await message.reject(requeue=False)
-        return None
-    return message._replace_body(new_body)
-
-
-to_json = Map(_convert_body_to_json) | FilterNones()
+@Middleware.from_callable
+async def load_json(
+        inp: AsyncIterator[Message[bytes]],
+        _: asyncio.AbstractEventLoop
+) -> AsyncIterator[Message[Dict[str, Any]]]:
+    async for message in inp:
+        try:
+            new_body = json.loads(message.body)
+        except json.JSONDecodeError:
+            logger.exception('Failed to decode message body')
+            await message.reject(requeue=False)
+        else:
+            yield message._replace_body(new_body)
 
 
 class ProcessBulk(Map[List[Message[T]], None]):

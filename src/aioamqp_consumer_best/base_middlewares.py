@@ -1,21 +1,10 @@
 import asyncio
 import logging
 from datetime import datetime
-from typing import Awaitable, Callable, Generic, List, Optional, TypeVar, Union, cast
-
-from aionursery import Nursery
+from typing import AsyncIterator, Awaitable, Callable, Generic, List, Optional, TypeVar
 
 
 logger = logging.getLogger(__name__)
-
-
-class Eoq:
-    """
-    End Of Queue
-    """
-
-    def __eq__(self, other):
-        return isinstance(other, Eoq)
 
 
 T = TypeVar('T')
@@ -23,14 +12,18 @@ U = TypeVar('U')
 V = TypeVar('V')
 
 
-class Middleware(Generic[T, U]):
+class Middleware(Generic[T, U]):  # pylint: disable=unsubscriptable-object
 
-    async def run(
+    async def __call__(
             self,
-            input_queue: 'asyncio.Queue[Union[T, Eoq]]',
-            output_queue: 'asyncio.Queue[Union[U, Eoq]]',
-            loop: asyncio.AbstractEventLoop = None,
-    ) -> None:
+            inp: AsyncIterator[T],
+            *,
+            loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> AsyncIterator[U]:  # pragma: no cover
+        # ensure function to be generator
+        empty_list: List[U] = []
+        for x in empty_list:
+            yield x
         raise NotImplementedError
 
     def __or__(
@@ -39,8 +32,14 @@ class Middleware(Generic[T, U]):
     ) -> '_Composition[T, U, V]':
         return _Composition(first=self, second=other)
 
+    @staticmethod
+    def from_callable(
+            func: Callable[[AsyncIterator[T], asyncio.AbstractEventLoop], AsyncIterator[U]],
+    ) -> '_FromCallable[T, U]':
+        return _FromCallable(func)
 
-class _Composition(Middleware[T, V], Generic[T, U, V]):
+
+class _Composition(Middleware[T, V], Generic[T, U, V]):  # pylint: disable=unsubscriptable-object
     first: Middleware[T, U]
     second: Middleware[U, V]
 
@@ -52,17 +51,33 @@ class _Composition(Middleware[T, V], Generic[T, U, V]):
         self.first = first
         self.second = second
 
-    async def run(
+    async def __call__(
             self,
-            input_queue: 'asyncio.Queue[Union[T, Eoq]]',
-            output_queue: 'asyncio.Queue[Union[V, Eoq]]',
+            inp: AsyncIterator[T],
+            *,
             loop: Optional[asyncio.AbstractEventLoop] = None,
-    ) -> None:
+    ) -> AsyncIterator[V]:
         loop = loop or asyncio.get_event_loop()
-        pipe: asyncio.Queue[Union[U, Eoq]] = asyncio.Queue(loop=loop)  # pylint: disable=unsubscriptable-object
-        async with Nursery() as nursery:
-            nursery.start_soon(self.first.run(input_queue, pipe, loop=loop))
-            nursery.start_soon(self.second.run(pipe, output_queue, loop=loop))
+        async for item in self.second(self.first(inp, loop=loop), loop=loop):
+            yield item
+
+
+class _FromCallable(Middleware[T, U]):
+
+    def __init__(
+            self,
+            func: Callable[[AsyncIterator[T], asyncio.AbstractEventLoop], AsyncIterator[U]],
+    ) -> None:
+        self.func = func
+
+    async def __call__(
+            self,
+            inp: AsyncIterator[T],
+            *,
+            loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> AsyncIterator[U]:
+        async for item in self.func(inp, loop or asyncio.get_event_loop()):
+            yield item
 
 
 class ToBulks(Middleware[T, List[T]]):
@@ -77,43 +92,42 @@ class ToBulks(Middleware[T, List[T]]):
         self.max_bulk_size = max_bulk_size
         self.bulk_timeout = bulk_timeout
 
-    async def run(
+    async def __call__(
             self,
-            input_queue: 'asyncio.Queue[Union[T, Eoq]]',
-            output_queue: 'asyncio.Queue[Union[List[T], Eoq]]',
+            inp: AsyncIterator[T],
+            *,
             loop: Optional[asyncio.AbstractEventLoop] = None,
-    ) -> None:
+    ) -> AsyncIterator[List[T]]:
         loop = loop or asyncio.get_event_loop()
         items: List[T] = []
         bulk_start: Optional[datetime] = None
+        nxt = asyncio.ensure_future(inp.__anext__(), loop=loop)
+        try:
+            while True:
+                timeout: Optional[float] = None
+                if bulk_start is not None and self.bulk_timeout is not None:
+                    timeout = self.bulk_timeout - (datetime.now() - bulk_start).total_seconds()
+                try:
+                    item = await asyncio.wait_for(asyncio.shield(nxt), timeout, loop=loop)
+                except asyncio.TimeoutError:
+                    yield items
+                    items = []
+                    bulk_start = None
+                    continue
+                except StopAsyncIteration:
+                    break
 
-        while True:
-            timeout: Optional[float] = None
-            if bulk_start is not None and self.bulk_timeout is not None:
-                timeout = self.bulk_timeout - (datetime.now() - bulk_start).total_seconds()
-
-            try:
-                item = await asyncio.wait_for(input_queue.get(), timeout=timeout, loop=loop)
-            except asyncio.TimeoutError:
-                output_queue.put_nowait(items)
-                items = []
-                bulk_start = None
-                continue
-
-            if isinstance(item, Eoq):
-                break
-
-            bulk_start = bulk_start or datetime.now()
-            items.append(item)
-
-            if self.max_bulk_size is not None and len(items) == self.max_bulk_size:
-                output_queue.put_nowait(items)
-                items = []
-                bulk_start = None
-
+                bulk_start = bulk_start or datetime.now()
+                items.append(item)
+                if self.max_bulk_size is not None and len(items) == self.max_bulk_size:
+                    yield items
+                    items = []
+                    bulk_start = None
+                nxt = asyncio.ensure_future(inp.__anext__())
+        finally:
+            nxt.cancel()
         if items:
-            output_queue.put_nowait(items)
-        output_queue.put_nowait(Eoq())
+            yield items
 
 
 class Filter(Middleware[T, T]):
@@ -121,20 +135,15 @@ class Filter(Middleware[T, T]):
     def __init__(self, predicate: Callable[[T], Awaitable[bool]]) -> None:
         self.predicate = predicate  # type: ignore # https://github.com/python/mypy/issues/708
 
-    async def run(
+    async def __call__(
             self,
-            input_queue: 'asyncio.Queue[Union[T, Eoq]]',
-            output_queue: 'asyncio.Queue[Union[T, Eoq]]',
-            loop: asyncio.AbstractEventLoop = None,  # pylint: disable=unused-argument
-    ) -> None:
-        while True:
-            item = await input_queue.get()
-            if isinstance(item, Eoq):
-                output_queue.put_nowait(item)
-                return
-
-            if await self.predicate(cast(T, item)):
-                output_queue.put_nowait(item)
+            inp: AsyncIterator[T],
+            *,
+            loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> AsyncIterator[T]:
+        async for item in inp:
+            if await self.predicate(item):
+                yield item
 
 
 class Map(Middleware[T, U]):
@@ -142,48 +151,40 @@ class Map(Middleware[T, U]):
     def __init__(self, func: Callable[[T], Awaitable[U]]) -> None:
         self.func = func  # type: ignore # https://github.com/python/mypy/issues/708
 
-    async def run(
+    async def __call__(
             self,
-            input_queue: 'asyncio.Queue[Union[T, Eoq]]',
-            output_queue: 'asyncio.Queue[Union[U, Eoq]]',
-            loop: asyncio.AbstractEventLoop = None,  # pylint: disable=unused-argument
-    ) -> None:
-        while True:
-            item = await input_queue.get()
-            if isinstance(item, Eoq):
-                output_queue.put_nowait(item)
-                break
-
-            output_queue.put_nowait(await self.func(item))
+            inp: AsyncIterator[T],
+            *,
+            loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> AsyncIterator[U]:
+        async for item in inp:
+            yield await self.func(item)
 
 
 class FilterNones(Middleware[Optional[T], T]):
 
-    async def run(
+    async def __call__(
             self,
-            input_queue: 'asyncio.Queue[Union[Optional[T], Eoq]]',
-            output_queue: 'asyncio.Queue[Union[T, Eoq]]',
-            loop: asyncio.AbstractEventLoop = None,  # pylint: disable=unused-argument
-    ) -> None:
-        while True:
-            item = await input_queue.get()
-            if item is None:
-                continue
-
-            output_queue.put_nowait(item)
-
-            if isinstance(item, Eoq):
-                break
+            inp: AsyncIterator[Optional[T]],
+            *,
+            loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> AsyncIterator[T]:
+        async for item in inp:
+            if item:
+                yield item
 
 
 class SkipAll(Middleware[T, None]):
 
-    async def run(
+    async def __call__(
             self,
-            input_queue: 'asyncio.Queue[Union[T, Eoq]]',
-            output_queue: 'asyncio.Queue[Union[None, Eoq]]',
-            loop: asyncio.AbstractEventLoop = None,  # pylint: disable=unused-argument
-    ) -> None:
-        while not isinstance(await input_queue.get(), Eoq):
+            inp: AsyncIterator[T],
+            *,
+            loop: Optional[asyncio.AbstractEventLoop] = None,
+    ) -> AsyncIterator[None]:
+        async for _ in inp:
             pass
-        output_queue.put_nowait(Eoq())
+        # ensure function to be generator
+        empty_list: List[None] = []
+        for x in empty_list:
+            yield x  # pragma: no cover

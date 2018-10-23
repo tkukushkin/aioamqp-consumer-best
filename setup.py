@@ -8,7 +8,7 @@ setup(
     package_dir={'': 'src'},
     install_requires=[
         'aioamqp',
-        'aionursery',
+        'aionursery < 0.3.0',
         'dataclasses',
     ],
     extras_require={
