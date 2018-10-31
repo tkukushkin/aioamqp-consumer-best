@@ -31,7 +31,7 @@ async def test_connect_and_open_channel(mocker):
     aioamqp.connect.assert_called_once_with(
         host=connection_params.host,
         port=connection_params.port,
-        username=connection_params.username,
+        login=connection_params.username,
         password=connection_params.password,
         virtualhost=connection_params.virtual_host,
         on_error=mocker.sentinel.on_error,
