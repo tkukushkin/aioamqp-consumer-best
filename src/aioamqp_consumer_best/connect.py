@@ -16,7 +16,7 @@ async def connect_and_open_channel(
     transport, protocol = await aioamqp.connect(
         host=connection_params.host,
         port=connection_params.port,
-        username=connection_params.username,
+        login=connection_params.username,
         password=connection_params.password,
         virtualhost=connection_params.virtual_host,
         on_error=on_error,
