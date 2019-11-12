@@ -5,4 +5,4 @@ from .declare_queue import declare_queue
 from .message import Message
 from .middlewares import Process, ProcessBulk, load_json
 from .records import ConnectionParams, Exchange, ExchangeType, Queue, QueueBinding
-from ._connection_provider import ConnectionProviderABC, ConnectionProvider
+from ._load_balancing_policy import LoadBalancingPolicyABC, RoundRobinPolicy

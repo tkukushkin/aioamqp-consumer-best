@@ -9,7 +9,7 @@ from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
 from aionursery import Nursery
 
-from aioamqp_consumer_best._connection_provider import ConnectionProvider, ConnectionProviderABC
+from aioamqp_consumer_best._load_balancing_policy import LoadBalancingPolicyABC, RoundRobinPolicy
 from aioamqp_consumer_best._helpers import queue_to_iterator
 from aioamqp_consumer_best.base_middlewares import Middleware, SkipAll
 from aioamqp_consumer_best.connect import connect_and_open_channel
@@ -30,7 +30,7 @@ class Consumer:
     default_reconnect_timeout: float
     max_reconnect_timeout: float
     tag: str
-    connection_provider: ConnectionProviderABC
+    load_balancing_policy: LoadBalancingPolicyABC
 
     _middleware: Middleware[Message[bytes], None]
     _transport: Optional[asyncio.Transport] = None
@@ -49,7 +49,7 @@ class Consumer:
             max_reconnect_timeout: float = 30.0,
             tag: str = '',
             consume_arguments: Optional[Dict[str, str]] = None,
-            connection_provider: Type[ConnectionProviderABC] = ConnectionProvider
+            load_balancing_policy: Type[LoadBalancingPolicyABC] = RoundRobinPolicy
     ) -> None:
         self.queue = queue
         self.prefetch_count = prefetch_count
@@ -59,7 +59,7 @@ class Consumer:
         self.max_reconnect_timeout = max_reconnect_timeout
 
         connection_params = connection_params or [ConnectionParams()]
-        self.connection_provider = connection_provider(connection_params, queue.name)
+        self.load_balancing_policy = load_balancing_policy(connection_params, queue.name)
 
         self._middleware = middleware | SkipAll()
 
@@ -114,7 +114,7 @@ class Consumer:
     ) -> None:
         await self._disconnect()
 
-        self.connection_params = await self.connection_provider.get_connection_params()
+        self.connection_params = await self.load_balancing_policy.get_connection_params()
 
         logger.info('Connection params: %s', self.connection_params)
 
