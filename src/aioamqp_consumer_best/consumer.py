@@ -26,7 +26,7 @@ T = TypeVar('T')
 class Consumer:
     queue: Queue
     prefetch_count: int
-    connection_params: Optional[ConnectionParams]
+    connection_params: Optional[ConnectionParams] = None
     default_reconnect_timeout: float
     max_reconnect_timeout: float
     tag: str
