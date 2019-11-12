@@ -1,6 +1,9 @@
 # aioamqp-consumer-best
 
-[![PyPI version](https://badge.fury.io/py/aioamqp-consumer-best.svg)](https://pypi.org/project/aioamqp-consumer-best/) [![Build Status](https://travis-ci.org/tkukushkin/aioamqp-consumer-best.svg?branch=master)](https://travis-ci.org/tkukushkin/aioamqp-consumer-best) [![codecov](https://codecov.io/gh/tkukushkin/aioamqp-consumer-best/branch/master/graph/badge.svg)](https://codecov.io/gh/tkukushkin/aioamqp-consumer-best)
+[![PyPI version](https://badge.fury.io/py/aioamqp-consumer-best.svg)](https://pypi.org/project///)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/aioamqp-consumer-best.svg?color=green)
+[![Build Status](https://github.com/tkukushkin/aioamqp-consumer-best/workflows/build/badge.svg?branch=master)](https://github.com/tkukushkin/aioamqp-consumer-best/actions?query=workflow%3Abuild+branch%3Amaster)
+[![codecov](https://codecov.io/gh/tkukushkin/aioamqp-consumer-best/branch/master/graph/badge.svg)](https://codecov.io/gh/tkukushkin/aioamqp-consumer-best)
 
 ## Usage
 
