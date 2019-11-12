@@ -180,6 +180,7 @@ class TestConsumer:
             default_reconnect_timeout=3.0,
             max_reconnect_timeout=5.0,
             tag='tag',
+            consume_arguments={'application': 'test'}
         )
 
         consumer._middleware = mocker.Mock(spec=Middleware)
@@ -205,6 +206,7 @@ class TestConsumer:
             callback=callback_arg,
             queue_name='queue_name',
             consumer_tag='tag',
+            arguments={'application': 'test'}
         )
 
         arg = Arg()
