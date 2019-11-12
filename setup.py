@@ -37,7 +37,7 @@ setup(
     },
     classifiers=[
         'Development Status :: 4 - Beta',
-        'Framework :: AsyncIO'
+        'Framework :: AsyncIO',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: MIT License',
         'Operating System :: OS Independent',
