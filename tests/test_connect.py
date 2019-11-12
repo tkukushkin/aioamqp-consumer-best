@@ -33,6 +33,7 @@ async def test_connect_and_open_channel(mocker):
         port=connection_params.port,
         login=connection_params.username,
         password=connection_params.password,
+        login_method='PLAIN',
         virtualhost=connection_params.virtual_host,
         on_error=mocker.sentinel.on_error,
         loop=asyncio.get_event_loop(),
