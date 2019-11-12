@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Type, TypeVar, Union
+from typing import Dict, List, Type, TypeVar, Union, Optional
 from urllib.parse import urlparse
 
 from dataclasses import dataclass, field
@@ -50,7 +50,7 @@ class ConnectionParams:
     port: int = 5672
     username: str = 'guest'
     password: str = 'guest'
-    virtual_host: str = '/'
+    virtual_host: Optional[str] = '/'
 
     @classmethod
     def from_string(cls: Type[T], connection_string: str) -> T:

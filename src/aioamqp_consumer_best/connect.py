@@ -19,6 +19,7 @@ async def connect_and_open_channel(
         login=connection_params.username,
         password=connection_params.password,
         virtualhost=connection_params.virtual_host,
+        login_method='PLAIN',
         on_error=on_error,
         loop=loop,
     )

@@ -1,8 +1,7 @@
 import asyncio
 import logging
 import socket
-from itertools import cycle
-from typing import Iterable, Iterator, Optional, TypeVar, cast
+from typing import Dict, Iterable, Optional, Type, TypeVar, cast
 
 import aioamqp
 from aioamqp.channel import Channel
@@ -10,6 +9,7 @@ from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
 from aionursery import Nursery
 
+from aioamqp_consumer_best._load_balancing_policy import LoadBalancingPolicyABC, RoundRobinPolicy
 from aioamqp_consumer_best._helpers import queue_to_iterator
 from aioamqp_consumer_best.base_middlewares import Middleware, SkipAll
 from aioamqp_consumer_best.connect import connect_and_open_channel
@@ -26,13 +26,13 @@ T = TypeVar('T')
 class Consumer:
     queue: Queue
     prefetch_count: int
-    connection_params: Iterable[ConnectionParams]
+    connection_params: Optional[ConnectionParams] = None
     default_reconnect_timeout: float
     max_reconnect_timeout: float
     tag: str
+    load_balancing_policy: LoadBalancingPolicyABC
 
     _middleware: Middleware[Message[bytes], None]
-    _connection_params_iterator: Iterator[ConnectionParams]
     _transport: Optional[asyncio.Transport] = None
     _protocol: Optional[aioamqp.AmqpProtocol] = None
     _channel: Optional[Channel] = None
@@ -48,16 +48,20 @@ class Consumer:
             default_reconnect_timeout: float = 3.0,
             max_reconnect_timeout: float = 30.0,
             tag: str = '',
+            consume_arguments: Optional[Dict[str, str]] = None,
+            load_balancing_policy: Type[LoadBalancingPolicyABC] = RoundRobinPolicy
     ) -> None:
         self.queue = queue
         self.prefetch_count = prefetch_count
-        self.connection_params = connection_params or [ConnectionParams()]
         self.tag = tag or socket.gethostname()
+        self.consume_arguments = consume_arguments
         self.default_reconnect_timeout = default_reconnect_timeout
         self.max_reconnect_timeout = max_reconnect_timeout
 
+        connection_params = connection_params or [ConnectionParams()]
+        self.load_balancing_policy = load_balancing_policy(connection_params, queue.name)
+
         self._middleware = middleware | SkipAll()
-        self._connection_params_iterator = cycle(self.connection_params)
 
     async def start(self, loop: asyncio.AbstractEventLoop = None) -> None:
         assert not self._closed_future, 'Consumer already started.'
@@ -110,16 +114,16 @@ class Consumer:
     ) -> None:
         await self._disconnect()
 
-        connection_params = next(self._connection_params_iterator)
+        self.connection_params = await self.load_balancing_policy.get_connection_params()
 
-        logger.info('Connection params: %s', connection_params)
+        logger.info('Connection params: %s', self.connection_params)
 
         async def on_error(exception):
             if not connection_closed_future.done():
                 connection_closed_future.set_exception(exception)
 
         self._transport, self._protocol, channel = await connect_and_open_channel(
-            connection_params=connection_params,
+            connection_params=self.connection_params,
             on_error=on_error,
             loop=loop,
         )
@@ -166,6 +170,7 @@ class Consumer:
             callback=callback,
             queue_name=self.queue.name,
             consumer_tag=self.tag,
+            arguments=self.consume_arguments
         )
 
         async for _ in self._middleware(inp=queue_to_iterator(input_queue), loop=loop):

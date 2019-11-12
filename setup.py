@@ -22,7 +22,7 @@ setup(
     install_requires=[
         'aioamqp',
         'aionursery < 0.3.0',
-        'dataclasses',
+        'dataclasses;python_version<"3.7"',
     ],
     extras_require={
         'test': [
