@@ -1,0 +1,1 @@
+include src/aioamqp_consumer_best/py.typed
