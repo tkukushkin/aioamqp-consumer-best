@@ -22,7 +22,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'aioamqp',
-        'aionursery < 0.3.0',
+        'anyio',
         'dataclasses;python_version<"3.7"',
     ],
     extras_require={

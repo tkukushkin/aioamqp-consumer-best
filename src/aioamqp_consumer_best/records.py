@@ -56,7 +56,7 @@ class ConnectionParams:
     def from_string(cls: Type[T], connection_string: str) -> T:
         parse_result = urlparse(connection_string)
         assert parse_result.scheme == 'amqp', 'Scheme must be amqp'
-        return cls(  # type: ignore  # https://github.com/python/mypy/issues/2683
+        return cls(
             host=parse_result.hostname or cls.host,
             port=int(parse_result.port) if parse_result.port else cls.port,
             username=parse_result.username or cls.username,

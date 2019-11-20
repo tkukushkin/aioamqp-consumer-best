@@ -4,15 +4,15 @@ import socket
 from typing import Dict, Iterable, Optional, Type, TypeVar, cast
 
 import aioamqp
+import anyio
 from aioamqp.channel import Channel
 from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
-from aionursery import Nursery
 
 from aioamqp_consumer_best._load_balancing_policy import LoadBalancingPolicyABC, RoundRobinPolicy
 from aioamqp_consumer_best._helpers import queue_to_iterator
 from aioamqp_consumer_best.base_middlewares import Middleware, SkipAll
-from aioamqp_consumer_best.connect import connect_and_open_channel
+from aioamqp_consumer_best._connect import connect, open_channel
 from aioamqp_consumer_best.declare_queue import declare_queue
 from aioamqp_consumer_best.message import Message
 from aioamqp_consumer_best.records import ConnectionParams, Queue
@@ -26,18 +26,12 @@ T = TypeVar('T')
 class Consumer:
     queue: Queue
     prefetch_count: int
-    connection_params: Optional[ConnectionParams] = None
     default_reconnect_timeout: float
     max_reconnect_timeout: float
     tag: str
     load_balancing_policy: LoadBalancingPolicyABC
 
     _middleware: Middleware[Message[bytes], None]
-    _transport: Optional[asyncio.Transport] = None
-    _protocol: Optional[aioamqp.AmqpProtocol] = None
-    _channel: Optional[Channel] = None
-    _closed_future: 'Optional[asyncio.Future[None]]' = None
-    _closed_ok: asyncio.Event
 
     def __init__(
             self,
@@ -63,101 +57,45 @@ class Consumer:
 
         self._middleware = middleware | SkipAll()
 
-    async def start(self, loop: asyncio.AbstractEventLoop = None) -> None:
-        assert not self._closed_future, 'Consumer already started.'
-
-        loop = loop or asyncio.get_event_loop()
-
-        self._closed_future = asyncio.Future(loop=loop)
-        self._closed_ok = asyncio.Event(loop=loop)
-
+    async def start(self) -> None:
         reconnect_attempts = 0
 
         while True:
-            connection_closed_future: asyncio.Future[None] = asyncio.Future(loop=loop)
-
             try:
-                await self._connect(
-                    connection_closed_future=connection_closed_future,
-                    loop=loop,
-                )
+                connection_params = await self.load_balancing_policy.get_connection_params()
 
-                reconnect_attempts = 0
+                logger.info('Trying to connect to %s', connection_params)
+                async with connect(connection_params) as (transport, protocol, connection_closed_future):
+                    logger.info('Connection ready.')
 
-                async with Nursery() as nursery:
-                    nursery.start_soon(connection_closed_future)
-                    nursery.start_soon(self._closed_future)
-                    nursery.start_soon(self._process_queue(loop=loop))
+                    async with open_channel(protocol) as channel:
+                        logger.info('Channel ready.')
+                        reconnect_attempts = 0
+
+                        await channel.basic_qos(prefetch_count=self.prefetch_count)
+                        await declare_queue(channel=channel, queue=self.queue)
+                        logger.info('Queue is ready.')
+
+                        async with anyio.create_task_group() as tg:
+                            await tg.spawn(self._process_queue, channel)
+                            await connection_closed_future
 
             except (aioamqp.AioamqpException, OSError) as exc:
                 logger.exception(str(exc))
                 reconnect_attempts += 1
-                timeout = min(self.default_reconnect_timeout * reconnect_attempts, self.max_reconnect_timeout)
-                logger.info('Trying to reconnect in %d seconds.', timeout)
-                await asyncio.sleep(timeout, loop=loop)
-            except _ConsumerCloseException:
-                break
+                reconnect_interval = min(
+                    self.default_reconnect_timeout * reconnect_attempts,
+                    self.max_reconnect_timeout,
+                )
+                logger.info('Trying to reconnect in %d seconds.', reconnect_interval)
+                await asyncio.sleep(reconnect_interval)
 
-        await self._disconnect()
-        self._closed_future = None
-        self._closed_ok.set()
-
-    async def close(self) -> None:
-        assert self._closed_future, 'Consumer not started.'
-        self._closed_future.set_exception(_ConsumerCloseException())
-        await self._closed_ok.wait()
-
-    async def _connect(
-            self,
-            connection_closed_future: 'asyncio.Future[None]',
-            loop: asyncio.AbstractEventLoop,
-    ) -> None:
-        await self._disconnect()
-
-        self.connection_params = await self.load_balancing_policy.get_connection_params()
-
-        logger.info('Connection params: %s', self.connection_params)
-
-        async def on_error(exception):
-            if not connection_closed_future.done():
-                connection_closed_future.set_exception(exception)
-
-        self._transport, self._protocol, channel = await connect_and_open_channel(
-            connection_params=self.connection_params,
-            on_error=on_error,
-            loop=loop,
-        )
-        self._channel = channel
-
-        logger.info('Connection and channel are ready.')
-
-        await channel.basic_qos(prefetch_count=self.prefetch_count)
-
-        await declare_queue(channel=channel, queue=self.queue)
-
-        logger.info('Queue is ready.')
-
-    async def _disconnect(self) -> None:
-        if self._channel:
-            if self._channel.is_open:
-                await self._channel.close()
-            self._channel = None
-
-        if self._protocol:
-            if self._protocol.state == aioamqp.protocol.OPEN:
-                await self._protocol.close()
-            self._protocol = None
-
-        if self._transport:
-            self._transport.close()
-            self._transport = None
-
-    async def _process_queue(self, loop: asyncio.AbstractEventLoop) -> None:
+    async def _process_queue(self, channel: Channel) -> None:
         input_queue: asyncio.Queue[Message[bytes]] = (  # pylint: disable=unsubscriptable-object
-            asyncio.Queue(loop=loop)
+            asyncio.Queue()
         )
 
-        async def callback(channel: Channel, body: bytes, envelope: Envelope, properties: Properties) -> None:
+        async def callback(_: Channel, body: bytes, envelope: Envelope, properties: Properties) -> None:
             input_queue.put_nowait(Message(
                 channel=channel,
                 body=body,
@@ -165,7 +103,6 @@ class Consumer:
                 properties=properties,
             ))
 
-        channel = cast(Channel, self._channel)
         await channel.basic_consume(
             callback=callback,
             queue_name=self.queue.name,
@@ -173,9 +110,5 @@ class Consumer:
             arguments=self.consume_arguments
         )
 
-        async for _ in self._middleware(inp=queue_to_iterator(input_queue), loop=loop):
+        async for _ in self._middleware(inp=queue_to_iterator(input_queue)):
             pass
-
-
-class _ConsumerCloseException(Exception):
-    pass
