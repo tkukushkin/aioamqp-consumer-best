@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import socket
-from typing import Dict, Iterable, Optional, Type, TypeVar, cast
+from typing import Dict, Iterable, Optional, Type, TypeVar
 
 import aioamqp
 import anyio
@@ -9,10 +9,10 @@ from aioamqp.channel import Channel
 from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
 
-from aioamqp_consumer_best._load_balancing_policy import LoadBalancingPolicyABC, RoundRobinPolicy
-from aioamqp_consumer_best._helpers import queue_to_iterator
-from aioamqp_consumer_best.base_middlewares import Middleware, SkipAll
 from aioamqp_consumer_best._connect import connect, open_channel
+from aioamqp_consumer_best._helpers import queue_to_iterator
+from aioamqp_consumer_best._load_balancing_policy import LoadBalancingPolicyABC, RoundRobinPolicy
+from aioamqp_consumer_best.base_middlewares import Middleware, SkipAll
 from aioamqp_consumer_best.declare_queue import declare_queue
 from aioamqp_consumer_best.message import Message
 from aioamqp_consumer_best.records import ConnectionParams, Queue

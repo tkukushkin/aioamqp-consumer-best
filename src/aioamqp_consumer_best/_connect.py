@@ -1,11 +1,10 @@
 import asyncio
 from asyncio import Future
 from contextlib import asynccontextmanager
-from typing import Awaitable, Callable, Tuple, AsyncGenerator
-
-from aioamqp import AioamqpException, AmqpProtocol
+from typing import AsyncGenerator, Tuple
 
 import aioamqp
+from aioamqp import AioamqpException, AmqpProtocol
 from aioamqp.channel import Channel
 
 from aioamqp_consumer_best.records import ConnectionParams
