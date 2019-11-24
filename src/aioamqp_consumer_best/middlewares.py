@@ -40,9 +40,9 @@ class ProcessBulk(Map[List[Message[T]], None]):
         async def wrapper(messages: List[Message[T]]) -> None:
             try:
                 await callback(messages)
+            except asyncio.CancelledError:  # pylint: disable=try-except-raise
+                raise
             except Exception as e:  # pylint: disable=broad-except
-                if isinstance(e, asyncio.CancelledError):  # Python 3.7 hack
-                    raise
                 logger.exception(str(e))
                 for message in messages:
                     try:
@@ -72,9 +72,9 @@ class Process(Map[Message[T], None]):
         async def wrapper(message: Message[T]) -> None:
             try:
                 await callback(message)
+            except asyncio.CancelledError:  # pylint: disable=try-except-raise
+                raise
             except Exception as e:  # pylint: disable=broad-except
-                if isinstance(e, asyncio.CancelledError):  # Python 3.7 hack
-                    raise
                 logger.exception(str(e))
                 try:
                     await message.reject()
