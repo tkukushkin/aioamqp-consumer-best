@@ -1,5 +1,4 @@
 import asyncio
-import logging
 
 import anyio
 import pytest
@@ -9,8 +8,7 @@ from aioamqp_consumer_best import Process
 
 @pytest.mark.functional
 @pytest.mark.asyncio
-async def test_start__rabbitmq_restarted__reconnect_and_process_message(rabbitmq, make_consumer, publish, caplog):
-    caplog.set_level(logging.INFO)
+async def test_start__rabbitmq_restarted__reconnect_and_process_message(rabbitmq, make_consumer, publish):
     result_future = asyncio.Future()
 
     async def callback(message):
