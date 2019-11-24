@@ -8,7 +8,7 @@ from tests.utils import Arg, collect_iterator, future, make_iterator
 pytestmark = pytest.mark.asyncio
 
 
-async def test_load_json(mocker, event_loop):
+async def test_load_json(mocker):
     # arrange
     message1 = Message(
         body='{"hello": "world"}',
@@ -26,7 +26,7 @@ async def test_load_json(mocker, event_loop):
     inp = make_iterator([message1, message2])
 
     # act
-    out = load_json.func(inp, event_loop)
+    out = load_json.func(inp)
 
     # assert
     result = await collect_iterator(out)
