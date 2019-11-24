@@ -56,3 +56,12 @@ class Channel:
             routing_key: str,
             arguments: Optional[_ArgumentsType],
     ) -> Any: ...
+
+    async def confirm_select(self) -> None: ...
+
+    async def publish(
+            self,
+            payload: bytes,
+            exchange_name: str,
+            routing_key: str,
+    ) -> None: ...
