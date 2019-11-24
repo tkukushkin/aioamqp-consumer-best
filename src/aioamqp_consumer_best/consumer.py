@@ -3,6 +3,8 @@ import logging
 import socket
 from typing import Dict, Iterable, Optional, Type, TypeVar
 
+from anyio.exceptions import ExceptionGroup
+
 import aioamqp
 import anyio
 from aioamqp.channel import Channel
@@ -80,7 +82,11 @@ class Consumer:
                             await tg.spawn(self._process_queue, channel)
                             await connection_closed_future
 
-            except (aioamqp.AioamqpException, OSError) as exc:
+            except (aioamqp.AioamqpException, OSError, ExceptionGroup) as exc:
+                if isinstance(exc, ExceptionGroup):
+                    if not isinstance(exc.exceptions[0], (aioamqp.AioamqpException, OSError)):
+                        raise exc.exceptions[0] from exc
+                    exc = exc.exceptions[0]
                 logger.exception(str(exc))
                 reconnect_attempts += 1
                 reconnect_interval = min(
