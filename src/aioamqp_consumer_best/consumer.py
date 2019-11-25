@@ -85,9 +85,9 @@ class Consumer:
 
             except (aioamqp.AioamqpException, OSError, anyio.exceptions.ExceptionGroup) as exc:
                 if isinstance(exc, anyio.exceptions.ExceptionGroup):
-                    if not isinstance(exc.exceptions[0], (aioamqp.AioamqpException, OSError)):
-                        raise exc.exceptions[0] from exc
-                    exc = exc.exceptions[0]
+                    for inner_exc in exc.exceptions:
+                        if not isinstance(inner_exc, (aioamqp.AioamqpException, OSError)):
+                            raise inner_exc from exc
                 logger.exception(str(exc))
                 reconnect_attempts += 1
                 reconnect_interval = min(
