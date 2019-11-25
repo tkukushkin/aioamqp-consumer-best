@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from aioamqp.channel import Channel
 
 from aioamqp_consumer_best.records import Queue

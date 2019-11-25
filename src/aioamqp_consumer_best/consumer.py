@@ -1,12 +1,13 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 import socket
 from typing import Dict, Iterable, Optional, Type, TypeVar
 
-from anyio.exceptions import ExceptionGroup
-
 import aioamqp
 import anyio
+import anyio.exceptions
 from aioamqp.channel import Channel
 from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
@@ -82,8 +83,8 @@ class Consumer:
                             await tg.spawn(self._process_queue, channel)
                             await connection_closed_future
 
-            except (aioamqp.AioamqpException, OSError, ExceptionGroup) as exc:
-                if isinstance(exc, ExceptionGroup):
+            except (aioamqp.AioamqpException, OSError, anyio.exceptions.ExceptionGroup) as exc:
+                if isinstance(exc, anyio.exceptions.ExceptionGroup):
                     if not isinstance(exc.exceptions[0], (aioamqp.AioamqpException, OSError)):
                         raise exc.exceptions[0] from exc
                     exc = exc.exceptions[0]

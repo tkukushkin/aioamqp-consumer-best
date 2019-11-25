@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import logging
 from datetime import datetime
@@ -23,14 +25,14 @@ class Middleware(Generic[T, U]):  # pylint: disable=unsubscriptable-object
 
     def __or__(
             self,
-            other: 'Middleware[U, V]'
-    ) -> '_Composition[T, U, V]':
+            other: Middleware[U, V]
+    ) -> _Composition[T, U, V]:
         return _Composition(first=self, second=other)
 
     @staticmethod
     def from_callable(
             func: Callable[[AsyncIterator[T]], AsyncIterator[U]],
-    ) -> '_FromCallable[T, U]':
+    ) -> _FromCallable[T, U]:
         return _FromCallable(func)
 
 

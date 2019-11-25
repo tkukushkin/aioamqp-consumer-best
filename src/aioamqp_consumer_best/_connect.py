@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 from asyncio import Future
 from contextlib import asynccontextmanager
@@ -13,8 +15,8 @@ from aioamqp_consumer_best.records import ConnectionParams
 @asynccontextmanager
 async def connect(
         connection_params: ConnectionParams,
-) -> AsyncGenerator[Tuple[asyncio.Transport, aioamqp.AmqpProtocol, 'Future[None]'], None]:
-    connection_error_future: 'Future[None]' = Future()
+) -> AsyncGenerator[Tuple[asyncio.Transport, aioamqp.AmqpProtocol, Future[None]], None]:
+    connection_error_future: Future[None] = Future()
 
     def on_error(exception: AioamqpException) -> None:
         if not connection_error_future.done():

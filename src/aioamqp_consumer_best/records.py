@@ -1,8 +1,9 @@
-from enum import Enum
-from typing import Dict, List, Type, TypeVar, Union, Optional
-from urllib.parse import urlparse
+from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Optional, Type, TypeVar, Union
+from urllib.parse import urlparse
 
 
 ArgumentsType = Dict[str, Union[str, bool, int]]
