@@ -50,7 +50,7 @@ class TestMiddleware:
 
 class Test_Composition:
 
-    async def test__call__(self, mocker, event_loop):
+    async def test__call__(self, mocker):
         # arrange
         mid1 = mocker.Mock(spec=Middleware, return_value=mocker.sentinel.it1)
         mid2 = mocker.Mock(spec=Middleware, return_value=make_iterator([mocker.sentinel.item]))
@@ -61,8 +61,8 @@ class Test_Composition:
 
         # assert
         assert await collect_iterator(out) == [mocker.sentinel.item]
-        mid1.assert_called_once_with(mocker.sentinel.inp, loop=event_loop)
-        mid2.assert_called_once_with(mocker.sentinel.it1, loop=event_loop)
+        mid1.assert_called_once_with(mocker.sentinel.inp)
+        mid2.assert_called_once_with(mocker.sentinel.it1)
 
 
 class Test_FromCallable:
@@ -79,7 +79,7 @@ class Test_FromCallable:
         assert await collect_iterator(out) == [2, 3]
 
     @staticmethod
-    async def _foo(inp, _):
+    async def _foo(inp):
         async for item in inp:
             yield item + 1
 

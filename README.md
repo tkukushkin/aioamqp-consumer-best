@@ -50,5 +50,5 @@ consumer = Consumer(
     ],
 )
 
-asyncio.get_event_loop().run_until_complete(consumer.start())
+asyncio.run(consumer.start())
 ```

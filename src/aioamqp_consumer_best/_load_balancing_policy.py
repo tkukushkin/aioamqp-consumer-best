@@ -1,7 +1,8 @@
-import abc
-from typing import Iterable
+from __future__ import annotations
 
+import abc
 from itertools import cycle
+from typing import Iterable
 
 from aioamqp_consumer_best.records import ConnectionParams
 

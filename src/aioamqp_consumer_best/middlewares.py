@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import logging
@@ -16,7 +18,6 @@ T = TypeVar('T')
 @Middleware.from_callable
 async def load_json(
         inp: AsyncIterator[Message[bytes]],
-        _: asyncio.AbstractEventLoop
 ) -> AsyncIterator[Message[Dict[str, Any]]]:
     async for message in inp:
         try:
@@ -38,9 +39,11 @@ class ProcessBulk(Map[List[Message[T]], None]):
             callback: Callable[[List[Message[T]]], Awaitable[None]],
     ) -> Callable[[List[Message[T]]], Awaitable[None]]:
         @wraps(callback)
-        async def wrapper(messages):
+        async def wrapper(messages: List[Message[T]]) -> None:
             try:
                 await callback(messages)
+            except asyncio.CancelledError:  # pylint: disable=try-except-raise
+                raise
             except Exception as e:  # pylint: disable=broad-except
                 logger.exception(str(e))
                 for message in messages:
@@ -71,6 +74,8 @@ class Process(Map[Message[T], None]):
         async def wrapper(message: Message[T]) -> None:
             try:
                 await callback(message)
+            except asyncio.CancelledError:  # pylint: disable=try-except-raise
+                raise
             except Exception as e:  # pylint: disable=broad-except
                 logger.exception(str(e))
                 try:

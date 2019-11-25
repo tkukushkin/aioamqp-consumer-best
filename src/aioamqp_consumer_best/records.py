@@ -1,8 +1,9 @@
-from enum import Enum
-from typing import Dict, List, Type, TypeVar, Union, Optional
-from urllib.parse import urlparse
+from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
+from typing import Dict, List, Optional, Type, TypeVar, Union
+from urllib.parse import urlparse
 
 
 ArgumentsType = Dict[str, Union[str, bool, int]]
@@ -56,7 +57,7 @@ class ConnectionParams:
     def from_string(cls: Type[T], connection_string: str) -> T:
         parse_result = urlparse(connection_string)
         assert parse_result.scheme == 'amqp', 'Scheme must be amqp'
-        return cls(  # type: ignore  # https://github.com/python/mypy/issues/2683
+        return cls(
             host=parse_result.hostname or cls.host,
             port=int(parse_result.port) if parse_result.port else cls.port,
             username=parse_result.username or cls.username,

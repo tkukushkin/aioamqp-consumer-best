@@ -1,0 +1,2 @@
+class AioamqpException(Exception):
+    pass

@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from aioamqp_consumer_best.message import Message, MessageAlreadyResolved
@@ -8,7 +10,7 @@ from tests.utils import Arg, collect_iterator, future, make_iterator
 pytestmark = pytest.mark.asyncio
 
 
-async def test_load_json(mocker, event_loop):
+async def test_load_json(mocker):
     # arrange
     message1 = Message(
         body='{"hello": "world"}',
@@ -26,7 +28,7 @@ async def test_load_json(mocker, event_loop):
     inp = make_iterator([message1, message2])
 
     # act
-    out = load_json.func(inp, event_loop)
+    out = load_json.func(inp)
 
     # assert
     result = await collect_iterator(out)
@@ -94,6 +96,21 @@ class TestProcessBulk:
         message1.reject.assert_called_once_with()
         message2.reject.assert_called_once_with()
 
+    async def test_run__callback_cancelled__should_cancel(self, mocker):
+        # arrange
+        message = Message(
+            body='message',
+            channel=mocker.sentinel.channel,
+            envelope=mocker.sentinel.envelope,
+            properties=mocker.sentinel.properties,
+        )
+        inp = make_iterator([message])
+        middleware = ProcessBulk(lambda _: future(exception=asyncio.CancelledError()))
+
+        # act
+        with pytest.raises(asyncio.CancelledError):
+            await collect_iterator(middleware(inp))
+
 
 class TestProcess:
 
@@ -142,3 +159,18 @@ class TestProcess:
         # assert
         assert await collect_iterator(out) == [None]
         message.reject.assert_called_once_with()
+
+    async def test_run__callback_cancelled__should_cancel(self, mocker):
+        # arrange
+        message = Message(
+            body='message',
+            channel=mocker.sentinel.channel,
+            envelope=mocker.sentinel.envelope,
+            properties=mocker.sentinel.properties,
+        )
+        inp = make_iterator([message])
+        middleware = Process(lambda _: future(exception=asyncio.CancelledError()))
+
+        # act
+        with pytest.raises(asyncio.CancelledError):
+            await collect_iterator(middleware(inp))

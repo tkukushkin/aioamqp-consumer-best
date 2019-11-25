@@ -10,6 +10,7 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 setup(
     name='aioamqp-consumer-best',
     version='1.3.0',
+    python_requires='~=3.7',
     url='https://github.com/tkukushkin/aioamqp-consumer-best',
     author='Timofey Kukushkin',
     author_email='tima@kukushkin.me',
@@ -22,11 +23,11 @@ setup(
     include_package_data=True,
     install_requires=[
         'aioamqp',
-        'aionursery < 0.3.0',
-        'dataclasses;python_version<"3.7"',
+        'anyio',
     ],
     extras_require={
         'test': [
+            'aiodocker',
             'mypy',
             'pycodestyle',
             'pylint',
@@ -44,7 +45,6 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',
         'Programming Language :: Python :: 3.8',
         'Topic :: Software Development :: Libraries :: Python Modules',
