@@ -142,12 +142,12 @@ class _RabbitMQFixture:
         await self._wait()
 
     async def _wait(self):
-        for _ in range(50):
+        for _ in range(70):
             try:
                 async with connect(ConnectionParams(port=self._rabbitmq_port)) as (_, protocol, _):
                     async with open_channel(protocol):
                         pass
-            except AioamqpException:
+            except (AioamqpException, OSError):
                 pass
             else:
                 return

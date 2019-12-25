@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import socket
-from typing import Dict, Iterable, Optional, Type, TypeVar
+from typing import Any, Dict, Iterable, Mapping, Optional, Type, TypeVar
 
 import aioamqp
 import anyio
@@ -33,6 +33,8 @@ class Consumer:
     max_reconnect_timeout: float
     tag: str
     load_balancing_policy: LoadBalancingPolicyABC
+    heartbeat_interval: Optional[int]
+    client_properties: Mapping[str, Any]
 
     _middleware: Middleware[Message[bytes], None]
 
@@ -46,7 +48,9 @@ class Consumer:
             max_reconnect_timeout: float = 30.0,
             tag: str = '',
             consume_arguments: Optional[Dict[str, str]] = None,
-            load_balancing_policy: Type[LoadBalancingPolicyABC] = RoundRobinPolicy
+            load_balancing_policy: Type[LoadBalancingPolicyABC] = RoundRobinPolicy,
+            heartbeat_interval: Optional[int] = 60,
+            client_properties: Optional[Mapping[str, Any]] = None,
     ) -> None:
         self.queue = queue
         self.prefetch_count = prefetch_count
@@ -54,6 +58,8 @@ class Consumer:
         self.consume_arguments = consume_arguments
         self.default_reconnect_timeout = default_reconnect_timeout
         self.max_reconnect_timeout = max_reconnect_timeout
+        self.heartbeat_interval = heartbeat_interval
+        self.client_properties = client_properties or {}
 
         connection_params = connection_params or [ConnectionParams()]
         self.load_balancing_policy = load_balancing_policy(connection_params, queue.name)
@@ -69,7 +75,11 @@ class Consumer:
                 connection_params = await self.load_balancing_policy.get_connection_params()
 
                 logger.info('Trying to connect to %s', connection_params)
-                async with connect(connection_params) as (transport, protocol, connection_closed_future):
+                async with connect(
+                        connection_params,
+                        heartbeat_interval=self.heartbeat_interval,
+                        client_properties=self.client_properties,
+                ) as (transport, protocol, connection_closed_future):
                     logger.info('Connection ready.')
 
                     async with open_channel(protocol) as channel:
