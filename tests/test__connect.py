@@ -12,6 +12,7 @@ async def test_connect__heartbeat_interval_is_none__not_passed_to_aioamqp(mocker
     # arrange
     transport = mocker.Mock(spec=asyncio.BaseTransport)
     protocol = mocker.Mock(spec=aioamqp.AmqpProtocol)
+    protocol.wait_closed.return_value = future()
     mocker.patch.object(aioamqp, 'connect', return_value=future((transport, protocol)))
 
     # act
@@ -27,6 +28,7 @@ async def test_connect__integer_heartbeat_interval__passed_to_aioamqp(mocker):
     # arrange
     transport = mocker.Mock(spec=asyncio.BaseTransport)
     protocol = mocker.Mock(spec=aioamqp.AmqpProtocol)
+    protocol.wait_closed.return_value = future()
     mocker.patch.object(aioamqp, 'connect', return_value=future((transport, protocol)))
 
     # act
