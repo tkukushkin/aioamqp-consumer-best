@@ -64,6 +64,7 @@ class Consumer:
         reconnect_attempts = 0
 
         while True:
+            connected: bool = False
             try:
                 connection_params = await self.load_balancing_policy.get_connection_params()
 
@@ -78,6 +79,7 @@ class Consumer:
                         await channel.basic_qos(prefetch_count=self.prefetch_count)
                         await declare_queue(channel=channel, queue=self.queue)
                         logger.info('Queue is ready.')
+                        connected = True
 
                         async with anyio.create_task_group() as tg:
                             await tg.spawn(self._process_queue, channel)
@@ -88,7 +90,11 @@ class Consumer:
                     for inner_exc in exc.exceptions:
                         if not isinstance(inner_exc, (aioamqp.AioamqpException, OSError)):
                             raise inner_exc from exc
-                logger.exception(str(exc))
+                if connected:
+                    msg = f'Connection closed with exception {type(exc)}'
+                else:
+                    msg = f'Failed to connect with exception {type(exc)}'
+                logger.warning(msg, exc_info=True)
                 reconnect_attempts += 1
                 reconnect_interval = min(
                     self.default_reconnect_timeout * reconnect_attempts,
