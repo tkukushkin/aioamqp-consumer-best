@@ -33,7 +33,7 @@ class Consumer:
     max_reconnect_timeout: float
     tag: str
     load_balancing_policy: LoadBalancingPolicyABC
-    heartbeat_interval: int
+    heartbeat_interval: Optional[int]
     client_properties: Mapping[str, Any]
 
     _middleware: Middleware[Message[bytes], None]
@@ -49,7 +49,7 @@ class Consumer:
             tag: str = '',
             consume_arguments: Optional[Dict[str, str]] = None,
             load_balancing_policy: Type[LoadBalancingPolicyABC] = RoundRobinPolicy,
-            heartbeat_interval: int = 60,
+            heartbeat_interval: Optional[int] = 60,
             client_properties: Optional[Mapping[str, Any]] = None,
     ) -> None:
         self.queue = queue

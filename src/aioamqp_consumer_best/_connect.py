@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from asyncio import Future
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Mapping, Optional, Tuple
+from typing import Any, AsyncGenerator, Mapping, Optional, Tuple, Dict
 
 import aioamqp
 from aioamqp import AioamqpException, AmqpProtocol
@@ -16,10 +16,14 @@ from aioamqp_consumer_best.records import ConnectionParams
 async def connect(
         connection_params: ConnectionParams,
         *,
-        heartbeat_interval: int = 60,
+        heartbeat_interval: Optional[int] = 60,
         client_properties: Optional[Mapping[str, Any]] = None,
 ) -> AsyncGenerator[Tuple[asyncio.Transport, aioamqp.AmqpProtocol, Future[None]], None]:
     client_properties = client_properties or {}
+
+    kwargs: Dict[str, Any] = {}
+    if heartbeat_interval is not None:
+        kwargs['heartbeat'] = heartbeat_interval
 
     connection_error_future: Future[None] = Future()
 
@@ -35,8 +39,8 @@ async def connect(
         virtualhost=connection_params.virtual_host,
         login_method='PLAIN',
         on_error=on_error,
-        heartbeat=heartbeat_interval,
         client_properties=client_properties,
+        **kwargs,
     )
     try:
         yield transport, protocol, connection_error_future
