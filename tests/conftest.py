@@ -39,9 +39,9 @@ async def rabbitmq_fixture(rabbitmq_port) -> _RabbitMQFixture:
     await result.teardown()
 
 
-@pytest.fixture(autouse=True)
-async def ensure_rabbitmq_is_alive(rabbitmq) -> None:
-    await rabbitmq.ensure_is_alive()
+# @pytest.fixture(autouse=True)
+# async def ensure_rabbitmq_is_alive(rabbitmq) -> None:
+#     await rabbitmq.ensure_is_alive()
 
 
 @pytest.fixture(name='exchange_name')
