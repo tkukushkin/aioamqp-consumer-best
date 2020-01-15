@@ -33,7 +33,7 @@ async def test_start__rabbitmq_restarted__reconnect_and_process_message(rabbitmq
 async def test_start__consumer_cancelled__reconnect_and_process_message(
         rabbitmq,
         make_consumer,
-        channel,
+        get_channel,
         queue_name,
         publish,
 ):
@@ -47,7 +47,8 @@ async def test_start__consumer_cancelled__reconnect_and_process_message(
     async with anyio.create_task_group() as tg:
         await tg.spawn(consumer.start)
         await asyncio.sleep(1)
-        await channel.queue_delete(queue_name)
+        async with get_channel() as channel:
+            await channel.queue_delete(queue_name)
         await asyncio.sleep(1)
         await publish(b'1')
         async with anyio.fail_after(3):
