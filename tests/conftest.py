@@ -75,13 +75,18 @@ def make_consumer_fixture(connection_params, exchange_name, queue_name):
     return make_consumer
 
 
+@pytest.fixture(name='channel')
+async def channel_fixture(connection_params):
+    async with connect(connection_params) as (_, protocol, _):
+        async with open_channel(protocol) as channel:
+            yield channel
+
+
 @pytest.fixture(name='publish')
-def publish_fixture(connection_params, exchange_name, queue_name):
+def publish_fixture(channel, exchange_name, queue_name):
     async def publish(payload: bytes) -> None:
-        async with connect(connection_params) as (_, protocol, _):
-            async with open_channel(protocol) as channel:
-                await channel.confirm_select()
-                await channel.publish(payload=payload, exchange_name=exchange_name, routing_key=_ROUTING_KEY)
+        await channel.confirm_select()
+        await channel.publish(payload=payload, exchange_name=exchange_name, routing_key=_ROUTING_KEY)
 
     return publish
 

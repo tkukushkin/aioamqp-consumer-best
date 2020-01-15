@@ -26,3 +26,32 @@ async def test_start__rabbitmq_restarted__reconnect_and_process_message(rabbitmq
         await tg.cancel_scope.cancel()
 
     assert result == b'1'
+
+
+@pytest.mark.functional
+@pytest.mark.asyncio
+async def test_start__consumer_cancelled__reconnect_and_process_message(
+        rabbitmq,
+        make_consumer,
+        channel,
+        queue_name,
+        publish,
+):
+    result_future = asyncio.Future()
+
+    async def callback(message):
+        result_future.set_result(message.body)
+
+    consumer = make_consumer(Process(callback))
+
+    async with anyio.create_task_group() as tg:
+        await tg.spawn(consumer.start)
+        await asyncio.sleep(1)
+        await channel.queue_delete(queue_name)
+        await asyncio.sleep(1)
+        await publish(b'1')
+        async with anyio.fail_after(3):
+            result = await result_future
+        await tg.cancel_scope.cancel()
+
+    assert result == b'1'

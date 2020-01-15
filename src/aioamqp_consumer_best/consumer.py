@@ -91,9 +91,17 @@ class Consumer:
                         logger.info('Queue is ready.')
                         connected = True
 
+                        async def cancellation_callback(_channel: Channel, _consumer_tag: str) -> None:
+                            connection_closed_future.set_exception(_ConsumerCancelled())
+
+                        channel.add_cancellation_callback(cancellation_callback)
+
                         async with anyio.create_task_group() as tg:
                             await tg.spawn(self._process_queue, channel)
                             await connection_closed_future
+
+            except _ConsumerCancelled:
+                logger.info('Consumer cancelled, trying to reconnect.')
 
             except (aioamqp.AioamqpException, OSError, anyio.exceptions.ExceptionGroup) as exc:
                 if isinstance(exc, anyio.exceptions.ExceptionGroup):
@@ -135,3 +143,7 @@ class Consumer:
 
         async for _ in self._middleware(inp=queue_to_iterator(input_queue)):
             pass
+
+
+class _ConsumerCancelled(Exception):
+    pass
