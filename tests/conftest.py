@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import socket
 import uuid
+from contextlib import asynccontextmanager
 
 import pytest
 from _pytest.fixtures import FixtureRequest
@@ -75,13 +76,22 @@ def make_consumer_fixture(connection_params, exchange_name, queue_name):
     return make_consumer
 
 
-@pytest.fixture(name='publish')
-def publish_fixture(connection_params, exchange_name, queue_name):
-    async def publish(payload: bytes) -> None:
+@pytest.fixture(name='get_channel')
+def get_channel_fixture(connection_params):
+    @asynccontextmanager
+    async def get_channel():
         async with connect(connection_params) as (_, protocol, _):
             async with open_channel(protocol) as channel:
-                await channel.confirm_select()
-                await channel.publish(payload=payload, exchange_name=exchange_name, routing_key=_ROUTING_KEY)
+                yield channel
+    return get_channel
+
+
+@pytest.fixture(name='publish')
+def publish_fixture(exchange_name, queue_name, get_channel):
+    async def publish(payload: bytes) -> None:
+        async with get_channel() as channel:
+            await channel.confirm_select()
+            await channel.publish(payload=payload, exchange_name=exchange_name, routing_key=_ROUTING_KEY)
 
     return publish
 
