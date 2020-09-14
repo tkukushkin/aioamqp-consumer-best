@@ -7,7 +7,6 @@ from typing import Any, Dict, Iterable, Mapping, Optional, Type, TypeVar
 
 import aioamqp
 import anyio
-import anyio.exceptions
 from aioamqp.channel import Channel
 from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
@@ -79,7 +78,7 @@ class Consumer:
                         connection_params,
                         heartbeat_interval=self.heartbeat_interval,
                         client_properties=self.client_properties,
-                ) as (transport, protocol, connection_closed_future):
+                ) as (_, protocol, connection_closed_future):
                     logger.info('Connection ready.')
 
                     async with open_channel(protocol) as channel:
@@ -103,9 +102,9 @@ class Consumer:
             except _ConsumerCancelled:
                 logger.info('Consumer cancelled, trying to reconnect.')
 
-            except (aioamqp.AioamqpException, OSError, anyio.exceptions.ExceptionGroup) as exc:
-                if isinstance(exc, anyio.exceptions.ExceptionGroup):
-                    for inner_exc in exc.exceptions:
+            except (aioamqp.AioamqpException, OSError, anyio.ExceptionGroup) as exc:
+                if isinstance(exc, anyio.ExceptionGroup):
+                    for inner_exc in exc.exceptions:  # pylint: disable=no-member
                         if not isinstance(inner_exc, (aioamqp.AioamqpException, OSError)):
                             raise inner_exc from exc
                 if connected:

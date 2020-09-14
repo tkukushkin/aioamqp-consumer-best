@@ -23,7 +23,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'aioamqp',
-        'anyio',
+        'anyio>=2',
     ],
     extras_require={
         'test': [
