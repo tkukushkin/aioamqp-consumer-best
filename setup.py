@@ -28,13 +28,14 @@ setup(
     extras_require={
         'test': [
             'aiodocker',
+            'mock<4',
             'mypy',
             'pycodestyle',
             'pylint',
             'pytest',
             'pytest-asyncio',
             'pytest-cov',
-            'pytest-mock',
+            'pytest-mock>=1.11.1,<2',
         ],
     },
     classifiers=[
