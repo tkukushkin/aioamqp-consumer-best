@@ -18,14 +18,17 @@ async def connect(
         *,
         heartbeat_interval: Optional[int] = 60,
         client_properties: Optional[Mapping[str, Any]] = None,
-) -> AsyncGenerator[Tuple[asyncio.Transport, aioamqp.AmqpProtocol, Future[None]], None]:
+) -> AsyncGenerator[
+    Tuple[asyncio.Transport, aioamqp.AmqpProtocol, Future[None]],
+    None
+]:  # pylint: disable=unsubscriptable-object
     client_properties = client_properties or {}
 
     kwargs: Dict[str, Any] = {}
     if heartbeat_interval is not None:
         kwargs['heartbeat'] = heartbeat_interval
 
-    connection_error_future: Future[None] = Future()
+    connection_error_future: Future[None] = Future()  # pylint: disable=unsubscriptable-object
 
     def on_error(exception: AioamqpException) -> None:
         if not connection_error_future.done():
