@@ -6,23 +6,16 @@ import socket
 import uuid
 from contextlib import asynccontextmanager
 
-import mock
 import pytest
 from _pytest.fixtures import FixtureRequest
 from aiodocker import Docker
 from aiodocker.containers import DockerContainer
-from pytest_mock import plugin
 
 from aioamqp import AioamqpException
 from aioamqp_consumer_best import ConnectionParams, Consumer, Exchange, Queue, QueueBinding, connect, open_channel
 
 
 _ROUTING_KEY = 'test-routing-key'
-
-
-@pytest.fixture(name='_mock_module_patch', autouse=True, scope='session')
-def mock_module_patch() -> None:
-    plugin._get_mock_module = lambda _: mock
 
 
 @pytest.fixture(scope='session')
