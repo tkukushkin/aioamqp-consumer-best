@@ -17,13 +17,13 @@ async def test_start__rabbitmq_restarted__reconnect_and_process_message(rabbitmq
     consumer = make_consumer(Process(callback))
 
     async with anyio.create_task_group() as tg:
-        await tg.spawn(consumer.start)
+        tg.start_soon(consumer.start)
         await asyncio.sleep(1)
         await rabbitmq.restart()
         await publish(b'1')
-        async with anyio.fail_after(30):
+        with anyio.fail_after(30):
             result = await result_future
-        await tg.cancel_scope.cancel()
+        tg.cancel_scope.cancel()
 
     assert result == b'1'
 
@@ -45,14 +45,14 @@ async def test_start__consumer_cancelled__reconnect_and_process_message(
     consumer = make_consumer(Process(callback))
 
     async with anyio.create_task_group() as tg:
-        await tg.spawn(consumer.start)
+        tg.start_soon(consumer.start)
         await asyncio.sleep(1)
         async with get_channel() as channel:
             await channel.queue_delete(queue_name)
         await asyncio.sleep(1)
         await publish(b'1')
-        async with anyio.fail_after(3):
+        with anyio.fail_after(3):
             result = await result_future
-        await tg.cancel_scope.cancel()
+        tg.cancel_scope.cancel()
 
     assert result == b'1'
