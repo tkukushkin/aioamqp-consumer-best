@@ -96,7 +96,7 @@ class Consumer:
                         channel.add_cancellation_callback(cancellation_callback)
 
                         async with anyio.create_task_group() as tg:
-                            await tg.spawn(self._process_queue, channel)
+                            tg.start_soon(self._process_queue, channel)
                             await connection_closed_future
 
             except _ConsumerCancelled:
