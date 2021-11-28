@@ -9,7 +9,7 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='aioamqp-consumer-best',
-    version='2.2.2',
+    version='2.3.0',
     python_requires='~=3.7',
     url='https://github.com/tkukushkin/aioamqp-consumer-best',
     author='Timofey Kukushkin',
