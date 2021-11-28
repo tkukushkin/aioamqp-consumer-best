@@ -8,6 +8,9 @@ from aioamqp_consumer_best.records import ConnectionParams
 
 
 class LoadBalancingPolicyABC(abc.ABC):
+    params: Iterable[ConnectionParams]
+    queue_name: str
+
     def __init__(self, params: Iterable[ConnectionParams], queue_name: str) -> None:
         self.params = params
         self.queue_name = queue_name

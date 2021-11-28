@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import socket
-from typing import Any, Dict, Iterable, Mapping, Optional, Type, TypeVar
+from typing import Any, Iterable, Mapping, Optional, Type
 
 import aioamqp
 import anyio
@@ -20,9 +20,7 @@ from aioamqp_consumer_best.message import Message
 from aioamqp_consumer_best.records import ConnectionParams, Queue
 
 
-logger = logging.getLogger(__name__)
-
-T = TypeVar('T')
+_logger = logging.getLogger(__name__)
 
 
 class Consumer:
@@ -31,6 +29,7 @@ class Consumer:
     default_reconnect_timeout: float
     max_reconnect_timeout: float
     tag: str
+    consume_arguments: Mapping[str, str]
     load_balancing_policy: LoadBalancingPolicyABC
     heartbeat_interval: Optional[int]
     client_properties: Mapping[str, Any]
@@ -41,12 +40,12 @@ class Consumer:
             self,
             queue: Queue,
             prefetch_count: int,
-            middleware: Middleware[Message[bytes], T],
+            middleware: Middleware[Message[bytes], Any],
             connection_params: Optional[Iterable[ConnectionParams]] = None,
             default_reconnect_timeout: float = 3.0,
             max_reconnect_timeout: float = 30.0,
             tag: str = '',
-            consume_arguments: Optional[Dict[str, str]] = None,
+            consume_arguments: Optional[Mapping[str, str]] = None,
             load_balancing_policy: Type[LoadBalancingPolicyABC] = RoundRobinPolicy,
             heartbeat_interval: Optional[int] = 60,
             client_properties: Optional[Mapping[str, Any]] = None,
@@ -54,7 +53,7 @@ class Consumer:
         self.queue = queue
         self.prefetch_count = prefetch_count
         self.tag = tag or socket.gethostname()
-        self.consume_arguments = consume_arguments
+        self.consume_arguments = consume_arguments or {}
         self.default_reconnect_timeout = default_reconnect_timeout
         self.max_reconnect_timeout = max_reconnect_timeout
         self.heartbeat_interval = heartbeat_interval
@@ -73,21 +72,21 @@ class Consumer:
             try:
                 connection_params = await self.load_balancing_policy.get_connection_params()
 
-                logger.info('Trying to connect to %s', connection_params)
+                _logger.info('Trying to connect to %s', connection_params)
                 async with connect(
                         connection_params,
                         heartbeat_interval=self.heartbeat_interval,
                         client_properties=self.client_properties,
                 ) as (_, protocol, connection_closed_future):
-                    logger.info('Connection ready.')
+                    _logger.info('Connection ready.')
 
                     async with open_channel(protocol) as channel:
-                        logger.info('Channel ready.')
+                        _logger.info('Channel ready.')
                         reconnect_attempts = 0
 
                         await channel.basic_qos(prefetch_count=self.prefetch_count)
                         await declare_queue(channel=channel, queue=self.queue)
-                        logger.info('Queue is ready.')
+                        _logger.info('Queue is ready.')
                         connected = True
 
                         async def cancellation_callback(_channel: Channel, _consumer_tag: str) -> None:
@@ -96,11 +95,11 @@ class Consumer:
                         channel.add_cancellation_callback(cancellation_callback)
 
                         async with anyio.create_task_group() as tg:
-                            tg.start_soon(self._process_queue, channel)
+                            tg.start_soon(self._process_queue, channel)  # type: ignore
                             await connection_closed_future
 
             except _ConsumerCancelled:
-                logger.info('Consumer cancelled, trying to reconnect.')
+                _logger.info('Consumer cancelled, trying to reconnect.')
 
             except (aioamqp.AioamqpException, OSError, anyio.ExceptionGroup) as exc:
                 if isinstance(exc, anyio.ExceptionGroup):
@@ -111,13 +110,13 @@ class Consumer:
                     msg = f'Connection closed with exception {type(exc)}'
                 else:
                     msg = f'Failed to connect with exception {type(exc)}'
-                logger.warning(msg, exc_info=True)
+                _logger.warning(msg, exc_info=True)
                 reconnect_attempts += 1
                 reconnect_interval = min(
                     self.default_reconnect_timeout * reconnect_attempts,
                     self.max_reconnect_timeout,
                 )
-                logger.info('Trying to reconnect in %d seconds.', reconnect_interval)
+                _logger.info('Trying to reconnect in %d seconds.', reconnect_interval)
                 await asyncio.sleep(reconnect_interval)
 
     async def _process_queue(self, channel: Channel) -> None:
@@ -137,7 +136,7 @@ class Consumer:
             callback=callback,
             queue_name=self.queue.name,
             consumer_tag=self.tag,
-            arguments=self.consume_arguments
+            arguments=dict(self.consume_arguments),
         )
 
         async for _ in self._middleware(inp=queue_to_iterator(input_queue)):

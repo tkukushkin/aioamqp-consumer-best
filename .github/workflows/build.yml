@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
 
-  build:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -38,8 +38,29 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         file: .tox/${{ matrix.python-version }}/log/coverage.xml
 
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        toxenv: [pyright, pyright-type-completeness]
+    env:
+      TOXENV: ${{ matrix.toxenv }}
+
+    steps:
+    - uses: actions/checkout@v1
+
+    - name: Set up Python3.9
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.9
+
+    - name: Test with tox
+      run: |
+        pip install -U tox
+        tox -v
+
   publish:
-    needs: [build]
+    needs: [test, lint]
     if: startsWith(github.event.ref, 'refs/tags')
     runs-on: ubuntu-latest
 

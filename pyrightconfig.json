@@ -1,0 +1,5 @@
+{
+    "include": ["src"],
+    "strict": ["src"],
+    "stubPath": "./stubs"
+}

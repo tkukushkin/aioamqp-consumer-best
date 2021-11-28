@@ -38,7 +38,7 @@ class Message(Generic[T]):  # pylint: disable=unsubscriptable-object
         await self._channel.basic_reject(delivery_tag=self.envelope.delivery_tag, requeue=requeue)
         self._is_completed = True
 
-    def _replace_body(self, new_body: U) -> Message[U]:
+    def replace_body(self, new_body: U) -> Message[U]:
         return Message(
             channel=self._channel,
             body=new_body,

@@ -10,7 +10,7 @@ from aioamqp_consumer_best.base_middlewares import Map, Middleware
 from aioamqp_consumer_best.message import Message, MessageAlreadyResolved
 
 
-logger = logging.getLogger(__name__)
+_logger = logging.getLogger(__name__)
 
 T = TypeVar('T')
 
@@ -23,10 +23,10 @@ async def load_json(
         try:
             new_body = json.loads(message.body)
         except json.JSONDecodeError:
-            logger.exception('Failed to decode message body')
+            _logger.exception('Failed to decode message body')
             await message.reject(requeue=False)
         else:
-            yield message._replace_body(new_body)
+            yield message.replace_body(new_body)
 
 
 class ProcessBulk(Map[List[Message[T]], None]):
@@ -45,7 +45,7 @@ class ProcessBulk(Map[List[Message[T]], None]):
             except asyncio.CancelledError:  # pylint: disable=try-except-raise
                 raise
             except Exception as e:  # pylint: disable=broad-except
-                logger.exception(str(e))
+                _logger.exception(str(e))
                 for message in messages:
                     try:
                         await message.reject()
@@ -77,7 +77,7 @@ class Process(Map[Message[T], None]):
             except asyncio.CancelledError:  # pylint: disable=try-except-raise
                 raise
             except Exception as e:  # pylint: disable=broad-except
-                logger.exception(str(e))
+                _logger.exception(str(e))
                 try:
                     await message.reject()
                 except MessageAlreadyResolved:

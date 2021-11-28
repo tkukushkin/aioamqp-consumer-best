@@ -1,12 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from datetime import datetime
 from typing import AsyncIterator, Awaitable, Callable, Generic, List, Optional, TypeVar
-
-
-logger = logging.getLogger(__name__)
 
 
 T = TypeVar('T')
@@ -54,6 +50,8 @@ class _Composition(Middleware[T, V], Generic[T, U, V]):  # pylint: disable=unsub
 
 
 class _FromCallable(Middleware[T, U]):
+
+    func: Callable[[AsyncIterator[T]], AsyncIterator[U]]
 
     def __init__(
             self,
@@ -112,6 +110,8 @@ class ToBulks(Middleware[T, List[T]]):
 
 class Filter(Middleware[T, T]):
 
+    predicate: Callable[[T], Awaitable[bool]]
+
     def __init__(self, predicate: Callable[[T], Awaitable[bool]]) -> None:
         self.predicate = predicate
 
@@ -122,6 +122,8 @@ class Filter(Middleware[T, T]):
 
 
 class Map(Middleware[T, U]):
+
+    func: Callable[[T], Awaitable[U]]
 
     def __init__(self, func: Callable[[T], Awaitable[U]]) -> None:
         self.func = func
