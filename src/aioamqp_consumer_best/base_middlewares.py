@@ -51,16 +51,14 @@ class _Composition(Middleware[T, V], Generic[T, U, V]):  # pylint: disable=unsub
 
 class _FromCallable(Middleware[T, U]):
 
-    func: Callable[[AsyncIterator[T]], AsyncIterator[U]]
-
     def __init__(
             self,
             func: Callable[[AsyncIterator[T]], AsyncIterator[U]],
     ) -> None:
-        self.func = func
+        self._func = func
 
     async def __call__(self, inp: AsyncIterator[T]) -> AsyncIterator[U]:
-        async for item in self.func(inp):
+        async for item in self._func(inp):
             yield item
 
 
@@ -110,27 +108,23 @@ class ToBulks(Middleware[T, List[T]]):
 
 class Filter(Middleware[T, T]):
 
-    predicate: Callable[[T], Awaitable[bool]]
-
     def __init__(self, predicate: Callable[[T], Awaitable[bool]]) -> None:
-        self.predicate = predicate
+        self._predicate = predicate
 
     async def __call__(self, inp: AsyncIterator[T]) -> AsyncIterator[T]:
         async for item in inp:
-            if await self.predicate(item):
+            if await self._predicate(item):
                 yield item
 
 
 class Map(Middleware[T, U]):
 
-    func: Callable[[T], Awaitable[U]]
-
     def __init__(self, func: Callable[[T], Awaitable[U]]) -> None:
-        self.func = func
+        self._func = func
 
     async def __call__(self, inp: AsyncIterator[T]) -> AsyncIterator[U]:
         async for item in inp:
-            yield await self.func(item)
+            yield await self._func(item)
 
 
 class FilterNones(Middleware[Optional[T], T]):

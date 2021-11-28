@@ -27,7 +27,7 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Test with tox
+    - name: tox
       run: |
         pip install -U tox
         tox -v
@@ -54,7 +54,7 @@ jobs:
       with:
         python-version: 3.9
 
-    - name: Test with tox
+    - name: tox
       run: |
         pip install -U tox
         tox -v
