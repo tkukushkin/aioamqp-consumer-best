@@ -28,7 +28,7 @@ async def test_load_json(mocker):
     inp = make_iterator([message1, message2])
 
     # act
-    out = load_json.func(inp)
+    out = load_json(inp)
 
     # assert
     result = await collect_iterator(out)
