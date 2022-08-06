@@ -111,10 +111,7 @@ class TestProcessBulk:
 
 
 class TestProcess:
-    @pytest.mark.parametrize(
-        "ack_side_effect",
-        [None, MessageAlreadyResolved()]
-    )
+    @pytest.mark.parametrize("ack_side_effect", [None, MessageAlreadyResolved()])
     async def test_run__success__ack_message(self, mocker, ack_side_effect):
         # arrange
         message = Message(
@@ -134,13 +131,7 @@ class TestProcess:
         assert await collect_iterator(out) == [None]
         message.ack.assert_called_once_with()
 
-    @pytest.mark.parametrize(
-        "reject_side_effect",
-        [
-            None,
-            MessageAlreadyResolved()
-        ]
-    )
+    @pytest.mark.parametrize("reject_side_effect", [None, MessageAlreadyResolved()])
     async def test_run__callback_raised_exception__reject_message(self, mocker, reject_side_effect):
         # arrange
         message = Message(
