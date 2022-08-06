@@ -4,14 +4,12 @@ import asyncio
 from datetime import datetime
 from typing import AsyncIterator, Awaitable, Callable, Generic, List, Optional, TypeVar
 
+T = TypeVar("T")
+U = TypeVar("U")
+V = TypeVar("V")
 
-T = TypeVar('T')
-U = TypeVar('U')
-V = TypeVar('V')
 
-
-class Middleware(Generic[T, U]):  # pylint: disable=unsubscriptable-object
-
+class Middleware(Generic[T, U]):
     async def __call__(self, inp: AsyncIterator[T]) -> AsyncIterator[U]:  # pragma: no cover
         # ensure function to be generator
         empty_list: List[U] = []
@@ -19,27 +17,24 @@ class Middleware(Generic[T, U]):  # pylint: disable=unsubscriptable-object
             yield x
         raise NotImplementedError
 
-    def __or__(
-            self,
-            other: Middleware[U, V]
-    ) -> _Composition[T, U, V]:
+    def __or__(self, other: Middleware[U, V]) -> _Composition[T, U, V]:
         return _Composition(first=self, second=other)
 
     @staticmethod
     def from_callable(
-            func: Callable[[AsyncIterator[T]], AsyncIterator[U]],
+        func: Callable[[AsyncIterator[T]], AsyncIterator[U]],
     ) -> _FromCallable[T, U]:
         return _FromCallable(func)
 
 
-class _Composition(Middleware[T, V], Generic[T, U, V]):  # pylint: disable=unsubscriptable-object
+class _Composition(Middleware[T, V], Generic[T, U, V]):
     first: Middleware[T, U]
     second: Middleware[U, V]
 
     def __init__(
-            self,
-            first: Middleware[T, U],
-            second: Middleware[U, V],
+        self,
+        first: Middleware[T, U],
+        second: Middleware[U, V],
     ) -> None:
         self.first = first
         self.second = second
@@ -50,10 +45,9 @@ class _Composition(Middleware[T, V], Generic[T, U, V]):  # pylint: disable=unsub
 
 
 class _FromCallable(Middleware[T, U]):
-
     def __init__(
-            self,
-            func: Callable[[AsyncIterator[T]], AsyncIterator[U]],
+        self,
+        func: Callable[[AsyncIterator[T]], AsyncIterator[U]],
     ) -> None:
         self._func = func
 
@@ -68,9 +62,8 @@ class ToBulks(Middleware[T, List[T]]):
 
     def __init__(self, max_bulk_size: Optional[int] = None, bulk_timeout: Optional[float] = None) -> None:
         assert (
-            max_bulk_size is not None
-            or bulk_timeout is not None
-        ), '`max_bulk_size` or `bulk_timeout` must be specified'
+            max_bulk_size is not None or bulk_timeout is not None
+        ), "`max_bulk_size` or `bulk_timeout` must be specified"
         self.max_bulk_size = max_bulk_size
         self.bulk_timeout = bulk_timeout
 
@@ -107,7 +100,6 @@ class ToBulks(Middleware[T, List[T]]):
 
 
 class Filter(Middleware[T, T]):
-
     def __init__(self, predicate: Callable[[T], Awaitable[bool]]) -> None:
         self._predicate = predicate
 
@@ -118,7 +110,6 @@ class Filter(Middleware[T, T]):
 
 
 class Map(Middleware[T, U]):
-
     def __init__(self, func: Callable[[T], Awaitable[U]]) -> None:
         self._func = func
 
@@ -128,7 +119,6 @@ class Map(Middleware[T, U]):
 
 
 class FilterNones(Middleware[Optional[T], T]):
-
     async def __call__(self, inp: AsyncIterator[Optional[T]]) -> AsyncIterator[T]:
         async for item in inp:
             if item:
@@ -136,7 +126,6 @@ class FilterNones(Middleware[Optional[T], T]):
 
 
 class SkipAll(Middleware[T, None]):
-
     async def __call__(self, inp: AsyncIterator[T]) -> AsyncIterator[None]:
         async for _ in inp:
             pass

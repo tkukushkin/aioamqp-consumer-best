@@ -6,12 +6,11 @@ from aioamqp.channel import Channel
 from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
 
+T = TypeVar("T")
+U = TypeVar("U")
 
-T = TypeVar('T')
-U = TypeVar('U')
 
-
-class Message(Generic[T]):  # pylint: disable=unsubscriptable-object
+class Message(Generic[T]):
     body: T
     envelope: Envelope
     properties: Properties
@@ -47,7 +46,7 @@ class Message(Generic[T]):  # pylint: disable=unsubscriptable-object
         )
 
     def __repr__(self) -> str:
-        return f'<Message body={self.body!r}>'
+        return f"<Message body={self.body!r}>"
 
 
 class MessageAlreadyResolved(Exception):

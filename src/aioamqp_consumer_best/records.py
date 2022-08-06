@@ -5,14 +5,13 @@ from enum import Enum
 from typing import Dict, List, Optional, Type, TypeVar, Union
 from urllib.parse import urlparse
 
-
 ArgumentsType = Dict[str, Union[str, bool, int]]
 
 
 class ExchangeType(Enum):
-    topic = 'topic'
-    direct = 'direct'
-    fanout = 'fanout'
+    topic = "topic"
+    direct = "direct"
+    fanout = "fanout"
 
 
 @dataclass(frozen=True)
@@ -42,25 +41,25 @@ class Queue:
     arguments: ArgumentsType = field(default_factory=dict)
 
 
-T = TypeVar('T', bound='ConnectionParams')
+T = TypeVar("T", bound="ConnectionParams")
 
 
 @dataclass(frozen=True)
 class ConnectionParams:
-    host: str = 'localhost'
+    host: str = "localhost"
     port: int = 5672
-    username: str = 'guest'
-    password: str = 'guest'
-    virtual_host: Optional[str] = '/'
+    username: str = "guest"
+    password: str = "guest"
+    virtual_host: Optional[str] = "/"
 
     @classmethod
     def from_string(cls: Type[T], connection_string: str) -> T:
         parse_result = urlparse(connection_string)
-        assert parse_result.scheme == 'amqp', 'Scheme must be amqp'
+        assert parse_result.scheme == "amqp", "Scheme must be amqp"
         return cls(
             host=parse_result.hostname or cls.host,
             port=int(parse_result.port) if parse_result.port else cls.port,
             username=parse_result.username or cls.username,
             password=parse_result.password or cls.password,
-            virtual_host=parse_result.path[1:] if parse_result.path else None
+            virtual_host=parse_result.path[1:] if parse_result.path else None,
         )

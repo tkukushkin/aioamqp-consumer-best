@@ -1,11 +1,10 @@
 import asyncio
 from typing import AsyncIterator, List, TypeVar
 
+T = TypeVar("T")
 
-T = TypeVar('T')
 
-
-def future(value: T = None, *, exception: BaseException = None) -> 'asyncio.Future[T]':
+def future(value: T = None, *, exception: BaseException = None) -> "asyncio.Future[T]":
     f: asyncio.Future[T] = asyncio.Future()
     if exception:
         f.set_exception(exception)
@@ -15,7 +14,6 @@ def future(value: T = None, *, exception: BaseException = None) -> 'asyncio.Futu
 
 
 class Arg(object):
-
     def __eq__(self, other):
         self.value = other
         return True

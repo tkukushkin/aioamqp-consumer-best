@@ -4,18 +4,14 @@ from aioamqp.envelope import Envelope
 
 from aioamqp_consumer_best import Message
 from aioamqp_consumer_best.message import MessageAlreadyResolved
-from tests.utils import future
-
 
 pytestmark = pytest.mark.asyncio
 
 
 class TestMessage:
-
     async def test_ack(self, mocker):
         # arrange
         channel = mocker.Mock(spec=Channel)
-        channel.basic_client_ack.return_value = future()
 
         message = self._make_message(mocker, channel)
 
@@ -36,7 +32,6 @@ class TestMessage:
     async def test_reject(self, mocker):
         # arrange
         channel = mocker.Mock(spec=Channel)
-        channel.basic_reject.return_value = future()
 
         message = self._make_message(mocker, channel)
 

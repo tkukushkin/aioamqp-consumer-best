@@ -19,7 +19,6 @@ from aioamqp_consumer_best.declare_queue import declare_queue
 from aioamqp_consumer_best.message import Message
 from aioamqp_consumer_best.records import ConnectionParams, Queue
 
-
 _logger = logging.getLogger(__name__)
 
 
@@ -37,18 +36,18 @@ class Consumer:
     _middleware: Middleware[Message[bytes], None]
 
     def __init__(
-            self,
-            queue: Queue,
-            prefetch_count: int,
-            middleware: Middleware[Message[bytes], Any],
-            connection_params: Optional[Iterable[ConnectionParams]] = None,
-            default_reconnect_timeout: float = 3.0,
-            max_reconnect_timeout: float = 30.0,
-            tag: str = '',
-            consume_arguments: Optional[Mapping[str, str]] = None,
-            load_balancing_policy: Type[LoadBalancingPolicyABC] = RoundRobinPolicy,
-            heartbeat_interval: Optional[int] = 60,
-            client_properties: Optional[Mapping[str, Any]] = None,
+        self,
+        queue: Queue,
+        prefetch_count: int,
+        middleware: Middleware[Message[bytes], Any],
+        connection_params: Optional[Iterable[ConnectionParams]] = None,
+        default_reconnect_timeout: float = 3.0,
+        max_reconnect_timeout: float = 30.0,
+        tag: str = "",
+        consume_arguments: Optional[Mapping[str, str]] = None,
+        load_balancing_policy: Type[LoadBalancingPolicyABC] = RoundRobinPolicy,
+        heartbeat_interval: Optional[int] = 60,
+        client_properties: Optional[Mapping[str, Any]] = None,
     ) -> None:
         self.queue = queue
         self.prefetch_count = prefetch_count
@@ -72,21 +71,21 @@ class Consumer:
             try:
                 connection_params = await self.load_balancing_policy.get_connection_params()
 
-                _logger.info('Trying to connect to %s', connection_params)
+                _logger.info("Trying to connect to %s", connection_params)
                 async with connect(
-                        connection_params,
-                        heartbeat_interval=self.heartbeat_interval,
-                        client_properties=self.client_properties,
+                    connection_params,
+                    heartbeat_interval=self.heartbeat_interval,
+                    client_properties=self.client_properties,
                 ) as (_, protocol, connection_closed_future):
-                    _logger.info('Connection ready.')
+                    _logger.info("Connection ready.")
 
                     async with open_channel(protocol) as channel:
-                        _logger.info('Channel ready.')
+                        _logger.info("Channel ready.")
                         reconnect_attempts = 0
 
                         await channel.basic_qos(prefetch_count=self.prefetch_count)
                         await declare_queue(channel=channel, queue=self.queue)
-                        _logger.info('Queue is ready.')
+                        _logger.info("Queue is ready.")
                         connected = True
 
                         async def cancellation_callback(_channel: Channel, _consumer_tag: str) -> None:
@@ -99,38 +98,38 @@ class Consumer:
                             await connection_closed_future
 
             except _ConsumerCancelled:
-                _logger.info('Consumer cancelled, trying to reconnect.')
+                _logger.info("Consumer cancelled, trying to reconnect.")
 
             except (aioamqp.AioamqpException, OSError, anyio.ExceptionGroup) as exc:
                 if isinstance(exc, anyio.ExceptionGroup):
-                    for inner_exc in exc.exceptions:  # pylint: disable=no-member
+                    for inner_exc in exc.exceptions:
                         if not isinstance(inner_exc, (aioamqp.AioamqpException, OSError)):
                             raise inner_exc from exc
                 if connected:
-                    msg = f'Connection closed with exception {type(exc)}'
+                    msg = f"Connection closed with exception {type(exc)}"
                 else:
-                    msg = f'Failed to connect with exception {type(exc)}'
+                    msg = f"Failed to connect with exception {type(exc)}"
                 _logger.warning(msg, exc_info=True)
                 reconnect_attempts += 1
                 reconnect_interval = min(
                     self.default_reconnect_timeout * reconnect_attempts,
                     self.max_reconnect_timeout,
                 )
-                _logger.info('Trying to reconnect in %d seconds.', reconnect_interval)
+                _logger.info("Trying to reconnect in %d seconds.", reconnect_interval)
                 await asyncio.sleep(reconnect_interval)
 
     async def _process_queue(self, channel: Channel) -> None:
-        input_queue: asyncio.Queue[Message[bytes]] = (  # pylint: disable=unsubscriptable-object
-            asyncio.Queue()
-        )
+        input_queue: asyncio.Queue[Message[bytes]] = asyncio.Queue()
 
         async def callback(_: Channel, body: bytes, envelope: Envelope, properties: Properties) -> None:
-            input_queue.put_nowait(Message(
-                channel=channel,
-                body=body,
-                envelope=envelope,
-                properties=properties,
-            ))
+            input_queue.put_nowait(
+                Message(
+                    channel=channel,
+                    body=body,
+                    envelope=envelope,
+                    properties=properties,
+                )
+            )
 
         await channel.basic_consume(
             callback=callback,

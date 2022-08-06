@@ -14,16 +14,14 @@ from aioamqp_consumer_best.base_middlewares import (
 )
 from tests.utils import collect_iterator, make_iterator
 
-
 pytestmark = pytest.mark.asyncio
 
 
 class TestMiddleware:
-
     async def test__or__(self, mocker):
         # arrange
         CompositionMock = mocker.patch(
-            'aioamqp_consumer_best.base_middlewares._Composition',
+            "aioamqp_consumer_best.base_middlewares._Composition",
             autospec=True,
         )
         middleware1 = Middleware()
@@ -38,7 +36,7 @@ class TestMiddleware:
 
     async def test_from_callable(self, mocker):
         # arrange
-        _FromCallableMock = mocker.patch('aioamqp_consumer_best.base_middlewares._FromCallable', autospec=True)
+        _FromCallableMock = mocker.patch("aioamqp_consumer_best.base_middlewares._FromCallable", autospec=True)
 
         # act
         middleware = Middleware.from_callable(mocker.sentinel._func)
@@ -49,7 +47,6 @@ class TestMiddleware:
 
 
 class Test_Composition:
-
     async def test__call__(self, mocker):
         # arrange
         mid1 = mocker.Mock(spec=Middleware, return_value=mocker.sentinel.it1)
@@ -66,7 +63,6 @@ class Test_Composition:
 
 
 class Test_FromCallable:
-
     async def test__call__(self):
         # arrange
         middleware = _FromCallable(self._foo)
@@ -85,7 +81,6 @@ class Test_FromCallable:
 
 
 class TestToBulks:
-
     async def test__call__(self):
         # arrange
         middleware = ToBulks(max_bulk_size=3, bulk_timeout=0.3)
@@ -109,7 +104,6 @@ class TestToBulks:
 
 
 class TestFilter:
-
     async def test__call__(self):
         # arrange
         middleware = Filter(self._predicate)
@@ -127,7 +121,6 @@ class TestFilter:
 
 
 class TestMap:
-
     async def test__call__(self):
         # arrange
         middleware = Map(self._func)
@@ -145,7 +138,6 @@ class TestMap:
 
 
 class TestFilterNones:
-
     async def test__call__(self):
         # arrange
         middleware = FilterNones()
@@ -159,7 +151,6 @@ class TestFilterNones:
 
 
 class TestSkipAll:
-
     async def test__call__(self):
         # arrange
         middleware = SkipAll()

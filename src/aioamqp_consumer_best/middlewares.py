@@ -9,42 +9,40 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, TypeVar
 from aioamqp_consumer_best.base_middlewares import Map, Middleware
 from aioamqp_consumer_best.message import Message, MessageAlreadyResolved
 
-
 _logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 @Middleware.from_callable
 async def load_json(
-        inp: AsyncIterator[Message[bytes]],
+    inp: AsyncIterator[Message[bytes]],
 ) -> AsyncIterator[Message[Dict[str, Any]]]:
     async for message in inp:
         try:
             new_body = json.loads(message.body)
         except json.JSONDecodeError:
-            _logger.exception('Failed to decode message body')
+            _logger.exception("Failed to decode message body")
             await message.reject(requeue=False)
         else:
             yield message.replace_body(new_body)
 
 
 class ProcessBulk(Map[List[Message[T]], None]):
-
     def __init__(self, func: Callable[[List[Message[T]]], Awaitable[None]]) -> None:
         super().__init__(self._ack_all_if_success(func))
 
     @staticmethod
     def _ack_all_if_success(
-            callback: Callable[[List[Message[T]]], Awaitable[None]],
+        callback: Callable[[List[Message[T]]], Awaitable[None]],
     ) -> Callable[[List[Message[T]]], Awaitable[None]]:
         @wraps(callback)
         async def wrapper(messages: List[Message[T]]) -> None:
             try:
                 await callback(messages)
-            except asyncio.CancelledError:  # pylint: disable=try-except-raise
+            except asyncio.CancelledError:
                 raise
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:
                 _logger.exception(str(e))
                 for message in messages:
                     try:
@@ -62,21 +60,20 @@ class ProcessBulk(Map[List[Message[T]], None]):
 
 
 class Process(Map[Message[T], None]):
-
     def __init__(self, func: Callable[[Message[T]], Awaitable[None]]) -> None:
         super().__init__(self._ack_if_success(func))
 
     @staticmethod
     def _ack_if_success(
-            callback: Callable[[Message[T]], Awaitable[None]],
+        callback: Callable[[Message[T]], Awaitable[None]],
     ) -> Callable[[Message[T]], Awaitable[None]]:
         @wraps(callback)
         async def wrapper(message: Message[T]) -> None:
             try:
                 await callback(message)
-            except asyncio.CancelledError:  # pylint: disable=try-except-raise
+            except asyncio.CancelledError:
                 raise
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:
                 _logger.exception(str(e))
                 try:
                     await message.reject()
