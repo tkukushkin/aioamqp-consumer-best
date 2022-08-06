@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from typing import Generic, TypeVar
 
 from aioamqp.channel import Channel
@@ -12,13 +10,13 @@ U = TypeVar("U")
 
 class Message(Generic[T]):
     body: T
-    envelope: Envelope
-    properties: Properties
+    envelope: "Envelope"
+    properties: "Properties"
 
     _channel: Channel
     _is_completed: bool
 
-    def __init__(self, channel: Channel, body: T, envelope: Envelope, properties: Properties) -> None:
+    def __init__(self, channel: "Channel", body: T, envelope: "Envelope", properties: "Properties") -> None:
         self.body = body
         self.envelope = envelope
         self.properties = properties
@@ -37,7 +35,7 @@ class Message(Generic[T]):
         await self._channel.basic_reject(delivery_tag=self.envelope.delivery_tag, requeue=requeue)
         self._is_completed = True
 
-    def replace_body(self, new_body: U) -> Message[U]:
+    def replace_body(self, new_body: U) -> "Message[U]":
         return Message(
             channel=self._channel,
             body=new_body,

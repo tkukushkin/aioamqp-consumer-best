@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 import contextlib
 import socket
@@ -32,7 +30,7 @@ def rabbitmq_port_fixture() -> int:
 
 
 @pytest.fixture(name="rabbitmq", scope="session")
-async def rabbitmq_fixture(rabbitmq_port) -> _RabbitMQFixture:
+async def rabbitmq_fixture(rabbitmq_port) -> "_RabbitMQFixture":
     result = _RabbitMQFixture(rabbitmq_port)
     await result.setup()
     yield result

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import abc
 from itertools import cycle
 from typing import Iterable

@@ -1,11 +1,9 @@
-from __future__ import annotations
-
 from aioamqp.channel import Channel
 
 from aioamqp_consumer_best.records import Queue
 
 
-async def declare_queue(channel: Channel, queue: Queue) -> None:
+async def declare_queue(channel: "Channel", queue: Queue) -> None:
     await channel.queue_declare(
         queue_name=queue.name,
         durable=queue.durable,

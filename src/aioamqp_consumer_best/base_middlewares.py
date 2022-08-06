@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import asyncio
 from datetime import datetime
 from typing import AsyncIterator, Awaitable, Callable, Generic, List, Optional, TypeVar
@@ -17,13 +15,11 @@ class Middleware(Generic[T, U]):
             yield x
         raise NotImplementedError
 
-    def __or__(self, other: Middleware[U, V]) -> _Composition[T, U, V]:
+    def __or__(self, other: "Middleware[U, V]") -> "_Composition[T, U, V]":
         return _Composition(first=self, second=other)
 
     @staticmethod
-    def from_callable(
-        func: Callable[[AsyncIterator[T]], AsyncIterator[U]],
-    ) -> _FromCallable[T, U]:
+    def from_callable(func: Callable[[AsyncIterator[T]], AsyncIterator[U]]) -> "_FromCallable[T, U]":
         return _FromCallable(func)
 
 
@@ -45,10 +41,7 @@ class _Composition(Middleware[T, V], Generic[T, U, V]):
 
 
 class _FromCallable(Middleware[T, U]):
-    def __init__(
-        self,
-        func: Callable[[AsyncIterator[T]], AsyncIterator[U]],
-    ) -> None:
+    def __init__(self, func: Callable[[AsyncIterator[T]], AsyncIterator[U]]) -> None:
         self._func = func
 
     async def __call__(self, inp: AsyncIterator[T]) -> AsyncIterator[U]:
