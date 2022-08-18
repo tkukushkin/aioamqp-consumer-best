@@ -1,5 +1,6 @@
 import asyncio
 
+import anyio
 import pytest
 
 from aioamqp_consumer_best.message import Message, MessageAlreadyResolved
@@ -62,7 +63,7 @@ class TestProcessBulk:
         out = middleware(inp)
 
         # assert
-        assert await collect_iterator(out) == [None]
+        assert await collect_iterator(out) == []
         message1.ack.assert_called_once_with()
         message2.ack.assert_called_once_with()
 
@@ -90,7 +91,7 @@ class TestProcessBulk:
         out = middleware(inp)
 
         # assert
-        assert await collect_iterator(out) == [None]
+        assert await collect_iterator(out) == []
         message1.reject.assert_called_once_with()
         message2.reject.assert_called_once_with()
 
@@ -103,11 +104,12 @@ class TestProcessBulk:
             properties=mocker.sentinel.properties,
         )
         inp = make_iterator([message])
-        middleware = ProcessBulk(lambda _: future(exception=asyncio.CancelledError()))
+        middleware = ProcessBulk(lambda _: asyncio.sleep(100))
 
         # act
-        with pytest.raises(asyncio.CancelledError):
-            await collect_iterator(middleware(inp))
+        with pytest.raises(TimeoutError):
+            async with anyio.fail_after(0.5):
+                await collect_iterator(middleware(inp))
 
 
 class TestProcess:
@@ -128,7 +130,7 @@ class TestProcess:
         out = middleware(inp)
 
         # assert
-        assert await collect_iterator(out) == [None]
+        assert await collect_iterator(out) == []
         message.ack.assert_called_once_with()
 
     @pytest.mark.parametrize("reject_side_effect", [None, MessageAlreadyResolved()])
@@ -148,7 +150,7 @@ class TestProcess:
         out = middleware(inp)
 
         # assert
-        assert await collect_iterator(out) == [None]
+        assert await collect_iterator(out) == []
         message.reject.assert_called_once_with()
 
     async def test_run__callback_cancelled__should_cancel(self, mocker):
@@ -160,8 +162,9 @@ class TestProcess:
             properties=mocker.sentinel.properties,
         )
         inp = make_iterator([message])
-        middleware = Process(lambda _: future(exception=asyncio.CancelledError()))
+        middleware = Process(lambda _: asyncio.sleep(1000))
 
-        # act
-        with pytest.raises(asyncio.CancelledError):
-            await collect_iterator(middleware(inp))
+        # act & assert
+        with pytest.raises(TimeoutError):
+            async with anyio.fail_after(0.5):
+                await collect_iterator(middleware(inp))

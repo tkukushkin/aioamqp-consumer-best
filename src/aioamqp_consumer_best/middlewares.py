@@ -1,10 +1,11 @@
 import asyncio
 import json
 import logging
-from functools import wraps
 from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, TypeVar
 
-from aioamqp_consumer_best.base_middlewares import Map, Middleware
+import anyio
+
+from aioamqp_consumer_best.base_middlewares import Middleware
 from aioamqp_consumer_best.message import Message, MessageAlreadyResolved
 
 _logger = logging.getLogger(__name__)
@@ -26,61 +27,64 @@ async def load_json(
             yield message.replace_body(new_body)
 
 
-class ProcessBulk(Map[List[Message[T]], None]):
+class ProcessBulk(Middleware[List[Message[T]], None]):
     def __init__(self, func: Callable[[List[Message[T]]], Awaitable[None]]) -> None:
-        super().__init__(self._ack_all_if_success(func))
+        super().__init__()
+        self._func = func
 
-    @staticmethod
-    def _ack_all_if_success(
-        callback: Callable[[List[Message[T]]], Awaitable[None]],
-    ) -> Callable[[List[Message[T]]], Awaitable[None]]:
-        @wraps(callback)
-        async def wrapper(messages: List[Message[T]]) -> None:
-            try:
-                await callback(messages)
-            except asyncio.CancelledError:
-                raise
-            except Exception as e:
-                _logger.exception(str(e))
-                for message in messages:
-                    try:
-                        await message.reject()
-                    except MessageAlreadyResolved:
-                        pass
-            else:
-                for message in messages:
-                    try:
-                        await message.ack()
-                    except MessageAlreadyResolved:
-                        pass
+    async def __call__(self, inp: AsyncIterator[List[Message[T]]]) -> AsyncIterator[None]:
+        # ensure iterator
+        lst: list[None] = []
+        for x in lst:
+            yield x
 
-        return wrapper
+        async with anyio.create_task_group() as tg:
+            async for messages in inp:
+                tg.start_soon(self._process_messages, messages)
+
+    async def _process_messages(self, messages: List[Message[T]]) -> None:
+        try:
+            await self._func(messages)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _logger.exception("Failed to process messages")
+            for message in messages:
+                await _resolve(message.reject)
+        else:
+            for message in messages:
+                await _resolve(message.ack)
 
 
-class Process(Map[Message[T], None]):
+class Process(Middleware[Message[T], None]):
     def __init__(self, func: Callable[[Message[T]], Awaitable[None]]) -> None:
-        super().__init__(self._ack_if_success(func))
+        super().__init__()
+        self._func = func
 
-    @staticmethod
-    def _ack_if_success(
-        callback: Callable[[Message[T]], Awaitable[None]],
-    ) -> Callable[[Message[T]], Awaitable[None]]:
-        @wraps(callback)
-        async def wrapper(message: Message[T]) -> None:
-            try:
-                await callback(message)
-            except asyncio.CancelledError:
-                raise
-            except Exception as e:
-                _logger.exception(str(e))
-                try:
-                    await message.reject()
-                except MessageAlreadyResolved:
-                    pass
-            else:
-                try:
-                    await message.ack()
-                except MessageAlreadyResolved:
-                    pass
+    async def __call__(self, inp: AsyncIterator[Message[T]]) -> AsyncIterator[None]:
+        # ensure iterator
+        lst: list[None] = []
+        for x in lst:
+            yield x
 
-        return wrapper
+        async with anyio.create_task_group() as tg:
+            async for message in inp:
+                tg.start_soon(self._process_message, message)
+
+    async def _process_message(self, message: Message[T]) -> None:
+        try:
+            await self._func(message)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            _logger.exception("Failed to process message")
+            await _resolve(message.reject)
+        else:
+            await _resolve(message.ack)
+
+
+async def _resolve(method: Callable[[], Awaitable[None]]) -> None:
+    try:
+        await method()
+    except MessageAlreadyResolved:
+        pass
