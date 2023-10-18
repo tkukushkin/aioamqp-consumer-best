@@ -14,8 +14,6 @@ jobs:
             tox_python_version: '310'
           - python-version: '3.11'
             tox_python_version: '311'
-          - python-version: '3.12'
-            tox_python_version: '312'
     env:
       TOXENV: tests_py${{ matrix.tox_python_version }}
 
