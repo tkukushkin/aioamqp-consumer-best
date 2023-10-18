@@ -1,2 +1,1 @@
-class Properties:
-    pass
+class Properties: ...

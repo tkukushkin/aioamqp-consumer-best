@@ -1,15 +1,15 @@
 import asyncio
-from typing import Any, Optional, Tuple
+from typing import Any
 
 from .exceptions import AioamqpException as AioamqpException
 from .protocol import AmqpProtocol as AmqpProtocol
 
 async def connect(
     host: str = ...,
-    port: Optional[int] = ...,
+    port: int | None = ...,
     login: str = ...,
     password: str = ...,
-    virtualhost: Optional[str] = ...,
+    virtualhost: str | None = ...,
     login_method: str = ...,
     **kwargs: Any,
-) -> Tuple[asyncio.Transport, AmqpProtocol]: ...
+) -> tuple[asyncio.Transport, AmqpProtocol]: ...

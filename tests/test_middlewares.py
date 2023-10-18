@@ -107,9 +107,8 @@ class TestProcessBulk:
         middleware = ProcessBulk(lambda _: asyncio.sleep(100))
 
         # act
-        with pytest.raises(TimeoutError):
-            async with anyio.fail_after(0.5):
-                await collect_iterator(middleware(inp))
+        with pytest.raises(TimeoutError), anyio.fail_after(0.5):
+            await collect_iterator(middleware(inp))
 
 
 class TestProcess:
@@ -165,6 +164,5 @@ class TestProcess:
         middleware = Process(lambda _: asyncio.sleep(1000))
 
         # act & assert
-        with pytest.raises(TimeoutError):
-            async with anyio.fail_after(0.5):
-                await collect_iterator(middleware(inp))
+        with pytest.raises(TimeoutError), anyio.fail_after(0.5):
+            await collect_iterator(middleware(inp))

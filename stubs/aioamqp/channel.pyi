@@ -1,12 +1,12 @@
-from typing import Any, Awaitable, Callable, Dict, Optional, Union
+from collections.abc import Awaitable, Callable
+from typing import Any, TypeAlias
 
 from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
 
-_ArgumentsType = Dict[str, Union[str, bool, int]]
+_ArgumentsType: TypeAlias = dict[str, str | (bool | int)]
 
 class Channel:
-
     is_open: bool
 
     async def close(self) -> None: ...
@@ -17,18 +17,18 @@ class Channel:
         callback: Callable[[Channel, bytes, Envelope, Properties], Awaitable[None]],
         queue_name: str,
         consumer_tag: str,
-        arguments: Optional[Dict[str, str]],
+        arguments: dict[str, str] | None,
     ) -> None: ...
     async def basic_client_ack(self, delivery_tag: int) -> None: ...
     async def basic_reject(self, delivery_tag: int, requeue: bool = ...) -> None: ...
     async def queue_declare(
         self,
         *,
-        queue_name: Optional[str],
+        queue_name: str | None,
         durable: bool,
         exclusive: bool,
         auto_delete: bool,
-        arguments: Optional[_ArgumentsType],
+        arguments: _ArgumentsType | None,
     ) -> Any: ...
     async def exchange_declare(
         self,
@@ -37,7 +37,7 @@ class Channel:
         type_name: str,
         durable: bool,
         auto_delete: bool,
-        arguments: Optional[_ArgumentsType],
+        arguments: _ArgumentsType | None,
     ) -> Any: ...
     async def queue_bind(
         self,
@@ -45,7 +45,7 @@ class Channel:
         queue_name: str,
         exchange_name: str,
         routing_key: str,
-        arguments: Optional[_ArgumentsType],
+        arguments: _ArgumentsType | None,
     ) -> Any: ...
     async def confirm_select(self) -> None: ...
     async def publish(

@@ -1,7 +1,9 @@
 import asyncio
+import contextlib
 import json
 import logging
-from typing import Any, AsyncIterator, Awaitable, Callable, Dict, List, TypeVar
+from collections.abc import AsyncIterator, Awaitable, Callable
+from typing import Any, TypeVar
 
 import anyio
 
@@ -16,7 +18,7 @@ T = TypeVar("T")
 @Middleware.from_callable
 async def load_json(
     inp: AsyncIterator[Message[bytes]],
-) -> AsyncIterator[Message[Dict[str, Any]]]:
+) -> AsyncIterator[Message[dict[str, Any]]]:
     async for message in inp:
         try:
             new_body = json.loads(message.body)
@@ -27,12 +29,12 @@ async def load_json(
             yield message.replace_body(new_body)
 
 
-class ProcessBulk(Middleware[List[Message[T]], None]):
-    def __init__(self, func: Callable[[List[Message[T]]], Awaitable[None]]) -> None:
+class ProcessBulk(Middleware[list[Message[T]], None]):
+    def __init__(self, func: Callable[[list[Message[T]]], Awaitable[None]]) -> None:
         super().__init__()
         self._func = func
 
-    async def __call__(self, inp: AsyncIterator[List[Message[T]]]) -> AsyncIterator[None]:
+    async def __call__(self, inp: AsyncIterator[list[Message[T]]]) -> AsyncIterator[None]:
         # ensure iterator
         lst: list[None] = []
         for x in lst:
@@ -42,7 +44,7 @@ class ProcessBulk(Middleware[List[Message[T]], None]):
             async for messages in inp:
                 tg.start_soon(self._process_messages, messages)
 
-    async def _process_messages(self, messages: List[Message[T]]) -> None:
+    async def _process_messages(self, messages: list[Message[T]]) -> None:
         try:
             await self._func(messages)
         except asyncio.CancelledError:
@@ -84,7 +86,5 @@ class Process(Middleware[Message[T], None]):
 
 
 async def _resolve(method: Callable[[], Awaitable[None]]) -> None:
-    try:
+    with contextlib.suppress(MessageAlreadyResolved):
         await method()
-    except MessageAlreadyResolved:
-        pass

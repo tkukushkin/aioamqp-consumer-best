@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Optional, Type, TypeVar, Union
+from typing import TypeVar
 from urllib.parse import urlparse
 
-ArgumentsType = Dict[str, Union[str, bool, int]]
+ArgumentsType = dict[str, str | bool | int]
 
 
 class ExchangeType(Enum):
@@ -32,7 +32,7 @@ class QueueBinding:
 @dataclass(frozen=True)
 class Queue:
     name: str
-    bindings: List[QueueBinding] = field(default_factory=list)
+    bindings: list[QueueBinding] = field(default_factory=list)
     durable: bool = True
     exclusive: bool = False
     auto_delete: bool = False
@@ -48,10 +48,10 @@ class ConnectionParams:
     port: int = 5672
     username: str = "guest"
     password: str = "guest"
-    virtual_host: Optional[str] = "/"
+    virtual_host: str | None = "/"
 
     @classmethod
-    def from_string(cls: Type[T], connection_string: str) -> T:
+    def from_string(cls: type[T], connection_string: str) -> T:
         parse_result = urlparse(connection_string)
         assert parse_result.scheme == "amqp", "Scheme must be amqp"
         return cls(

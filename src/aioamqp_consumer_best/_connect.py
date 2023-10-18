@@ -1,7 +1,8 @@
 import asyncio
 from asyncio import Future
+from collections.abc import AsyncGenerator, Mapping
 from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Dict, Mapping, Optional, Tuple
+from typing import Any
 
 import aioamqp
 from aioamqp import AioamqpException, AmqpProtocol
@@ -14,16 +15,16 @@ from aioamqp_consumer_best.records import ConnectionParams
 async def connect(
     connection_params: ConnectionParams,
     *,
-    heartbeat_interval: Optional[int] = 60,
-    client_properties: Optional[Mapping[str, Any]] = None,
-) -> AsyncGenerator[Tuple[asyncio.Transport, aioamqp.AmqpProtocol, "Future[None]"], None]:
+    heartbeat_interval: int | None = 60,
+    client_properties: Mapping[str, Any] | None = None,
+) -> AsyncGenerator[tuple[asyncio.Transport, aioamqp.AmqpProtocol, Future[None]], None]:
     client_properties = client_properties or {}
 
-    kwargs: Dict[str, Any] = {}
+    kwargs: dict[str, Any] = {}
     if heartbeat_interval is not None:
         kwargs["heartbeat"] = heartbeat_interval
 
-    connection_error_future: "Future[None]" = Future()
+    connection_error_future: Future[None] = Future()
 
     def on_error(exception: AioamqpException) -> None:
         if not connection_error_future.done():

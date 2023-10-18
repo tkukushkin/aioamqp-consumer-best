@@ -4,7 +4,6 @@ import aioamqp
 import pytest
 
 from aioamqp_consumer_best import ConnectionParams, connect
-from tests.utils import future
 
 
 @pytest.mark.asyncio

@@ -77,9 +77,8 @@ def make_consumer_fixture(connection_params, exchange_name, queue_name):
 def get_channel_fixture(connection_params):
     @asynccontextmanager
     async def get_channel():
-        async with connect(connection_params) as (_, protocol, _):
-            async with open_channel(protocol) as channel:
-                yield channel
+        async with connect(connection_params) as (_, protocol, _), open_channel(protocol) as channel:
+            yield channel
 
     return get_channel
 
@@ -155,9 +154,11 @@ class _RabbitMQFixture:
     async def _wait(self):
         for _ in range(70):
             try:
-                async with connect(ConnectionParams(port=self._rabbitmq_port)) as (_, protocol, _):
-                    async with open_channel(protocol):
-                        pass
+                async with (
+                    connect(ConnectionParams(port=self._rabbitmq_port)) as (_, protocol, _),
+                    open_channel(protocol),
+                ):
+                    pass
             except (AioamqpException, OSError):
                 pass
             else:

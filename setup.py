@@ -1,20 +1,16 @@
-import os
+from pathlib import Path
 
 from setuptools import find_packages, setup
-
-this_directory = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(this_directory, "README.md"), encoding="utf-8") as f:
-    long_description = f.read()
 
 setup(
     name="aioamqp-consumer-best",
     version="2.3.0",
-    python_requires="~=3.8",
+    python_requires=">=3.10",
     url="https://github.com/tkukushkin/aioamqp-consumer-best",
     author="Timofey Kukushkin",
     author_email="tima@kukushkin.me",
     description="Consumer utility for AMQP",
-    long_description=long_description,
+    long_description=(Path(__file__).parent / "README.md").read_text(encoding="utf-8"),
     long_description_content_type="text/markdown",
     license="MIT",
     packages=find_packages("src"),
@@ -22,7 +18,8 @@ setup(
     include_package_data=True,
     install_requires=[
         "aioamqp",
-        "anyio>=3.4",
+        "anyio>=4",
+        "exceptiongroup>=1.1.3",
     ],
     classifiers=[
         "Development Status :: 4 - Beta",
@@ -32,9 +29,9 @@ setup(
         "Operating System :: OS Independent",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Typing :: Typed",
     ],

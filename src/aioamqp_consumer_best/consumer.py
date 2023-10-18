@@ -1,10 +1,12 @@
 import asyncio
 import logging
 import socket
-from typing import Any, Iterable, Mapping, Optional, Type
+from collections.abc import Iterable, Mapping
+from typing import Any
 
 import aioamqp
 import anyio
+import exceptiongroup
 from aioamqp.channel import Channel
 from aioamqp.envelope import Envelope
 from aioamqp.properties import Properties
@@ -28,7 +30,7 @@ class Consumer:
     tag: str
     consume_arguments: Mapping[str, str]
     load_balancing_policy: LoadBalancingPolicyABC
-    heartbeat_interval: Optional[int]
+    heartbeat_interval: int | None
     client_properties: Mapping[str, Any]
 
     _middleware: Middleware[Message[bytes], None]
@@ -38,14 +40,14 @@ class Consumer:
         queue: Queue,
         prefetch_count: int,
         middleware: Middleware[Message[bytes], Any],
-        connection_params: Optional[Iterable[ConnectionParams]] = None,
+        connection_params: Iterable[ConnectionParams] | None = None,
         default_reconnect_timeout: float = 3.0,
         max_reconnect_timeout: float = 30.0,
         tag: str = "",
-        consume_arguments: Optional[Mapping[str, str]] = None,
-        load_balancing_policy: Type[LoadBalancingPolicyABC] = RoundRobinPolicy,
-        heartbeat_interval: Optional[int] = 60,
-        client_properties: Optional[Mapping[str, Any]] = None,
+        consume_arguments: Mapping[str, str] | None = None,
+        load_balancing_policy: type[LoadBalancingPolicyABC] = RoundRobinPolicy,
+        heartbeat_interval: int | None = 60,
+        client_properties: Mapping[str, Any] | None = None,
     ) -> None:
         self.queue = queue
         self.prefetch_count = prefetch_count
@@ -92,17 +94,20 @@ class Consumer:
                         channel.add_cancellation_callback(cancellation_callback)
 
                         async with anyio.create_task_group() as tg:
-                            tg.start_soon(self._process_queue, channel)  # type: ignore
+                            tg.start_soon(self._process_queue, channel)
                             await connection_closed_future
 
-            except _ConsumerCancelled:
-                _logger.info("Consumer cancelled, trying to reconnect.")
+            except (aioamqp.AioamqpException, OSError, exceptiongroup.ExceptionGroup) as exc:
+                if isinstance(exc, exceptiongroup.ExceptionGroup):
+                    if any(isinstance(inner_exc, _ConsumerCancelled) for inner_exc in exc.exceptions):
+                        _logger.info("Consumer cancelled, trying to reconnect.")
+                        continue
 
-            except (aioamqp.AioamqpException, OSError, anyio.ExceptionGroup) as exc:
-                if isinstance(exc, anyio.ExceptionGroup):
-                    for inner_exc in exc.exceptions:
-                        if not isinstance(inner_exc, (aioamqp.AioamqpException, OSError)):
-                            raise inner_exc from exc
+                    if not all(
+                        isinstance(inner_exc, aioamqp.AioamqpException | OSError) for inner_exc in exc.exceptions
+                    ):
+                        raise
+                    exc = exc.exceptions[0]
                 if connected:
                     msg = f"Connection closed with exception {type(exc)}"
                 else:
