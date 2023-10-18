@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="aioamqp-consumer-best",
-    version="2.3.0",
+    version="2.4.0",
     python_requires=">=3.10",
     url="https://github.com/tkukushkin/aioamqp-consumer-best",
     author="Timofey Kukushkin",
